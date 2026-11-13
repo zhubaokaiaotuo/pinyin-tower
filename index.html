@@ -1,0 +1,3845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#f8f5ec">
+<title>拼字奇兵</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#e9e4d6;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-user-select:none;user-select:none}
+  #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  #wrap{position:relative;width:100%;height:100%;max-width:520px;overflow:hidden;
+    background:#f8f5ec;touch-action:manipulation;box-shadow:0 0 90px rgba(0,0,0,.9)}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+  /* ---------- HUD ---------- */
+  #hud{position:absolute;left:0;right:0;top:0;padding:13px 15px;z-index:6;
+    display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}
+  #hearts{display:flex;gap:5px}
+  #left{display:flex;flex-direction:column;gap:6px}
+  #matchTag{font-size:9px;letter-spacing:1.6px;color:#8a8578;font-weight:700;
+    opacity:0;transition:opacity .35s}
+  #matchTag.on{opacity:1}
+  #matchTag.hot{color:#b8453a}
+  .heart{width:20px;height:18px;transition:transform .3s,opacity .3s}
+  .heart.gone{opacity:.2;transform:scale(.8)}
+  #right{text-align:right}
+  #score{font-size:26px;font-weight:900;color:#3a3a38;line-height:1}
+  #meta{font-size:9.5px;letter-spacing:2px;color:#8a8578;margin-top:5px}
+  #titleTag{font-size:9.5px;letter-spacing:2px;color:#a97a2f;margin-top:4px;font-weight:800;
+    opacity:0;transition:opacity .3s}
+  #titleTag.on{opacity:1}
+
+  /* ---------- 双方字格（镜像） ---------- */
+  #duelBand{position:absolute;left:0;right:0;top:40%;height:26%;z-index:6;pointer-events:none}
+  .fgrid{position:absolute;top:0;bottom:0;width:18%;display:flex;flex-direction:column;gap:5px}
+  #myGrid{left:30%}
+  #foeGrid{right:30%}
+  .fcell{flex:1;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    border:1.3px dashed rgba(120,130,125,.28);background:rgba(255,255,255,.4);transition:background .25s}
+  .fcell .zh{font-size:21px;font-weight:800;line-height:1.1}
+  .fcell .py{font-size:9px;color:#9a9484;margin-top:1px}
+  #myGrid .fcell.full{border-style:solid;border-color:#cbb391;background:#fffdf7}
+  #myGrid .fcell.full .zh{color:#8a6538}
+  #foeGrid .fcell{border-color:rgba(90,94,98,.3);background:rgba(236,233,226,.5)}
+  #foeGrid .fcell.full{border-style:solid;border-color:#a9a396;background:#e9e5dc}
+  #foeGrid .fcell.full .zh{color:#3a3a38}
+  .fcell.pop{animation:cellIn .35s ease-out}
+  .fcell.boom{animation:boomOut .5s forwards}
+  @keyframes cellIn{from{transform:scale(.4);opacity:0}}
+  @keyframes boomOut{40%{transform:scale(1.25)}100%{transform:scale(.3);opacity:0}}
+  .fgridLabel{position:absolute;top:-16px;font-size:9px;letter-spacing:2px;color:#9a9484}
+  #myGrid .fgridLabel{left:2px}
+  #foeGrid .fgridLabel{right:2px}
+
+  /* ---------- 拼读预览 ---------- */
+  #pv{position:absolute;left:31%;right:31%;top:52%;transform:translateY(-50%);
+    text-align:center;pointer-events:none;z-index:6}
+  #pvText{display:inline-block;font-size:17px;font-weight:700;letter-spacing:2px;
+    color:#5f6f68;opacity:0;transition:opacity .15s}
+  #pvText.on{opacity:1}
+  #pvText b{color:#b8453a}
+
+  /* ---------- 8 格字母卡（缩小版） ---------- */
+  #gridWrap{position:absolute;left:13px;right:13px;top:68.5%;bottom:16%;z-index:6}
+  #grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);
+    gap:7px;width:100%;height:100%}
+  .cell{position:relative;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;transition:transform .12s,box-shadow .18s,background .2s;
+    border:1.3px dashed rgba(120,130,125,.30);background:rgba(255,255,255,.5)}
+  .cell.empty{pointer-events:none}
+  .cell .lb{font-size:21px;font-weight:800;letter-spacing:.5px;line-height:1}
+  .cell.two .lb{font-size:17px}
+  .cell.three .lb{font-size:14px}
+  .cell .kx{position:absolute;top:3px;right:6px;font-size:8px;letter-spacing:1px;opacity:.65}
+  .cell.s{background:linear-gradient(160deg,#eaf2f5,#dce9ee);border:1.3px solid rgba(110,150,165,.55)}
+  .cell.s .lb,.cell.s .kx{color:#3f6273}
+  .cell.m{background:linear-gradient(160deg,#f1ebf3,#e5dbe9);border:1.3px solid rgba(160,130,170,.5)}
+  .cell.m .lb,.cell.m .kx{color:#6b5573}
+  .cell.y{background:linear-gradient(160deg,#f9f0e3,#f2e5d4);border:1.3px solid rgba(190,155,110,.55)}
+  .cell.y .lb,.cell.y .kx{color:#8a6538}
+  .cell.sel{transform:translateY(-4px) scale(1.04);
+    box-shadow:0 0 0 2.5px #b8453a,0 8px 22px rgba(184,69,58,.20)}
+  .cell.bad{animation:shk .34s}
+  @keyframes shk{0%,100%{transform:translateX(0)}22%{transform:translateX(-6px)}
+    48%{transform:translateX(5px)}72%{transform:translateX(-3px)}}
+  .cell.pop{animation:popOut .28s forwards}
+  @keyframes popOut{to{transform:scale(.4);opacity:0}}
+  .cell.drop{animation:dropIn .3s ease-out}
+  @keyframes dropIn{from{transform:translateY(-22px) scale(.85);opacity:0}}
+
+  /* ---------- 底部 ---------- */
+  #bottom{position:absolute;left:0;right:0;bottom:0;height:16%;z-index:6;padding:0 14px;
+    display:flex;flex-direction:column;justify-content:flex-end;
+    padding-bottom:calc(10px + env(safe-area-inset-bottom));
+    background:linear-gradient(to top,rgba(248,245,236,.98) 45%,rgba(248,245,236,0));
+    pointer-events:none}
+  #charlist{display:flex;gap:6px;justify-content:center;margin-bottom:7px;flex-wrap:wrap}
+  .chip{font-size:14px;font-weight:700;color:#4a4a46;background:rgba(120,130,125,.10);
+    border:1px solid rgba(120,130,125,.28);border-radius:8px;padding:2px 8px}
+  .chip.new{animation:chipIn .4s;color:#b8453a;border-color:rgba(184,69,58,.45)}
+  @keyframes chipIn{from{transform:scale(.5);opacity:0}}
+  #tip{font-size:10.5px;letter-spacing:2px;color:#9a9484;text-align:center;height:14px}
+
+  /* ---------- 同音字阶梯 ---------- */
+  #ladder{position:absolute;inset:0;z-index:18;display:none;background:rgba(238,233,220,0.55)}
+  #ladder.on{display:block}
+  #ladderPanel{position:absolute;left:5%;right:5%;top:16%;background:#fffdf7;
+    border:1.5px solid #d8cfba;border-radius:16px;padding:20px 16px 14px;text-align:center;
+    box-shadow:0 24px 60px rgba(70,58,32,.22)}
+  #lKey{font-size:22px;font-weight:800;color:#3a3a38;letter-spacing:1px}
+  #lKey b{color:#b8453a}
+  #lSub{margin-top:7px;font-size:11.5px;color:#9a9484;letter-spacing:1.5px}
+  #lOpts{display:flex;gap:6px;margin-top:16px;align-items:flex-start;justify-content:center;
+    flex-wrap:wrap;min-height:76px}
+  .lOpt{flex:1 1 56px;max-width:74px;background:#fbf8f1;border:1.5px solid #e0dac9;border-radius:12px;
+    padding:13px 0 9px;cursor:pointer;text-align:center;transition:transform .12s,border-color .15s}
+  .lOpt:active{transform:scale(.93)}
+  .lOpt .zh{font-size:25px;font-weight:800;color:#8a6538;line-height:1.1}
+  .lOpt .py{font-size:10.5px;color:#9a9484;margin-top:4px;letter-spacing:1px}
+  .lOpt.bad{animation:shk .34s;border-color:#b8453a}
+  .lOpt.good{border-color:#b8453a;background:#f7e8e4;animation:glow 1s ease-in-out infinite}
+  /* 声调条：先定调，再出字 */
+  #lTones{display:flex;gap:7px;margin-top:14px;justify-content:center}
+  .tChip{flex:1 1 0;max-width:86px;background:#fbf8f1;border:1.5px solid #e0dac9;border-radius:10px;
+    padding:7px 0 5px;cursor:pointer;transition:transform .12s,background .15s,border-color .15s}
+  .tChip .tpy{display:block;font-size:15px;font-weight:800;color:#8a6538;letter-spacing:.5px}
+  .tChip .tno{display:block;font-size:9px;color:#b3aa96;margin-top:2px;letter-spacing:1px}
+  .tChip.on{background:#f7e8e4;border-color:#b8453a}
+  .tChip.on .tpy{color:#b8453a}
+  .tChip.on .tno{color:#b8453a}
+  .tChip:active{transform:scale(.93)}
+  #lToneHint{margin-top:9px;font-size:10.5px;color:#b8453a;letter-spacing:1px;height:14px}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(184,69,58,0)}50%{box-shadow:0 0 0 3px rgba(184,69,58,.22)}}
+  #lCancel{margin-top:13px;border:0;background:transparent;color:#9a9484;font-size:11px;
+    letter-spacing:3px;padding:6px 18px;cursor:pointer;font-family:inherit}
+
+  /* ---------- 字将 ---------- */
+  #general{position:absolute;inset:0;z-index:12;pointer-events:none;opacity:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    transition:opacity .2s}
+  #general.on{opacity:1}
+  #general .gname{font-size:40px;font-weight:900;color:#3a3a38;letter-spacing:6px;
+    text-shadow:0 0 30px rgba(184,69,58,.45),0 0 70px rgba(184,69,58,.25)}
+  #general .gword{margin-top:8px;font-size:15px;letter-spacing:8px;color:#b8453a}
+  #general .gburst{position:absolute;width:340px;height:340px;border-radius:50%;
+    background:radial-gradient(circle,rgba(206,146,112,.38),rgba(184,69,58,.14) 42%,transparent 68%);
+    animation:gburst .7s ease-out forwards}
+  @keyframes gburst{from{transform:scale(.3);opacity:1}to{transform:scale(1.9);opacity:0}}
+
+  /* ---------- 情绪横幅 / 连击 / 残血 ---------- */
+  #banner{position:absolute;left:0;right:0;top:24%;z-index:16;pointer-events:none;
+    display:flex;flex-direction:column;align-items:center;opacity:0;transition:opacity .24s}
+  #banner.on{opacity:1}
+  #banner .bMain{font-size:33px;font-weight:900;letter-spacing:7px;line-height:1.22;
+    color:#b8453a;text-shadow:0 2px 0 rgba(255,252,244,.92),0 0 26px rgba(184,69,58,.26)}
+  #banner.on .bMain{animation:bnPop .5s cubic-bezier(.18,.9,.24,1)}
+  @keyframes bnPop{0%{transform:scale(.72);opacity:0}58%{transform:scale(1.07)}100%{transform:scale(1);opacity:1}}
+  #banner .bSub{margin-top:11px;font-size:11.5px;letter-spacing:3px;color:#8b8474;
+    background:rgba(255,252,244,.86);padding:5px 13px;border-radius:20px;
+    border:1px solid rgba(180,168,142,.5)}
+  #banner.win .bMain{color:#a97a2f;text-shadow:0 2px 0 rgba(255,252,244,.95),0 0 30px rgba(206,164,96,.55)}
+  #banner.win .bSub{color:#8a6538;border-color:rgba(206,178,120,.62)}
+  #banner.bad .bMain{color:#8f2f28}
+
+  #comboTag{position:absolute;left:50%;top:8.4%;transform:translateX(-50%) scale(.8);
+    z-index:7;pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;
+    font-size:10px;letter-spacing:2px;color:#b8453a;background:rgba(247,232,228,.95);
+    border:1px solid rgba(184,69,58,.4);border-radius:20px;padding:4px 12px;white-space:nowrap}
+  #comboTag.on{opacity:1;transform:translateX(-50%) scale(1)}
+  #comboTag b{font-size:15px;font-weight:900;margin-left:1px;color:#b8453a}
+  #comboTag.pop b{display:inline-block;animation:cpop .3s}
+  @keyframes cpop{0%{transform:scale(1.9)}100%{transform:scale(1)}}
+  #score.pop{animation:scorePop .3s}
+  @keyframes scorePop{0%{transform:scale(1.45);color:#b8453a}100%{transform:scale(1)}}
+
+  #wrap.dimhud #hud{opacity:.22}
+  #hud{transition:opacity .4s}
+  #wrap.lowlife::after{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;
+    box-shadow:inset 0 0 70px rgba(184,69,58,.34);animation:lowb 1.25s ease-in-out infinite}
+  @keyframes lowb{0%,100%{opacity:.4}50%{opacity:.95}}
+
+  /* ---------- 覆盖屏 ---------- */
+  .screen{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:32px 26px;
+    background:radial-gradient(120% 85% at 50% 30%,rgba(248,245,236,.94),rgba(243,239,229,.98));
+    transition:opacity .35s}
+  .screen.hide{opacity:0;pointer-events:none}
+  .eyebrow{font-size:9.5px;letter-spacing:7px;color:#9a9484;margin-bottom:15px}
+  h1{font-size:34px;font-weight:900;color:#3a3a38;line-height:1.3;letter-spacing:2px}
+  h1 em{font-style:normal;color:#b8453a}
+  .sub{margin-top:11px;font-size:13px;line-height:1.95;color:#6f6a5e;max-width:290px}
+  .sub b{color:#b8453a}
+  .sub .k{display:inline-block;background:rgba(220,233,238,.96);color:#3f6273;
+    border-radius:6px;padding:0 6px;margin:0 2px;font-weight:700;font-size:12px}
+  .sub .k2{background:rgba(249,240,227,.96);color:#8a6538}
+  .best{margin-top:9px;font-size:11.5px;color:#9a9484;letter-spacing:1px}
+  .grades{margin-top:11px;font-size:10.5px;color:#a8a292;letter-spacing:.2px}
+  .pace{display:flex;gap:8px;margin-top:11px}
+  .pbtn{border:1.5px solid #d8cfba;background:#fbf8f1;color:#9a9484;font-family:inherit;
+    font-size:11.5px;padding:7px 15px;border-radius:20px;letter-spacing:1px;cursor:pointer;
+    transition:background .15s,border-color .15s}
+  .pbtn.on{background:#f7e8e4;border-color:#b8453a;color:#b8453a;font-weight:700}
+  .pbtn:active{transform:scale(.95)}
+  .best b{color:#3a3a38;font-size:14px;margin-left:5px}
+  .btn{margin-top:16px;border:0;cursor:pointer;font-family:inherit;padding:15px 48px;border-radius:40px;
+    font-size:15px;font-weight:800;letter-spacing:3px;color:#ffffff;
+    background:linear-gradient(135deg,#c9584a,#a83b32);
+    box-shadow:0 10px 30px rgba(184,69,58,.32),inset 0 -2px 0 rgba(0,0,0,.15);
+    transition:transform .12s}
+  .btn:active{transform:scale(.95)}
+  .hint{position:absolute;bottom:22px;left:0;right:0;font-size:10px;color:#b3ad9c;letter-spacing:2px}
+  .big{font-size:58px;font-weight:900;color:#3a3a38;line-height:1;letter-spacing:-2px}
+  .unit{font-size:11.5px;color:#9a9484;letter-spacing:3px;margin-top:9px}
+  .newrec{display:none;margin-top:12px;font-size:10.5px;letter-spacing:4px;color:#b8453a}
+  .newrec.on{display:block}
+  .stat{margin-top:16px;font-size:12px;color:#6f6a5e;line-height:2}
+  .stat span{color:#b8453a;font-weight:700}
+  .overLv{font-size:12px;letter-spacing:5px;color:#8b8474;margin-bottom:11px}
+  .verdict{margin-top:15px;font-size:14px;font-weight:800;color:#3a3a38;letter-spacing:1px}
+  .verdictS{margin-top:6px;font-size:11.5px;color:#8b8474;letter-spacing:.4px;max-width:290px;line-height:1.8}
+  .runchars{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;margin-top:13px;max-width:300px}
+  .runchars span{font-size:13px;font-weight:700;color:#6f6a5e;background:rgba(120,130,125,.09);
+    border:1px solid rgba(120,130,125,.22);border-radius:7px;padding:2px 7px}
+  .comboBest{margin-top:10px;font-size:11px;letter-spacing:2px;color:#b8453a}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="wrap">
+    <canvas id="c"></canvas>
+
+    <div id="hud">
+      <div id="left">
+        <div id="hearts"></div>
+        <div id="matchTag"></div>
+      </div>
+      <div id="right">
+        <div id="score">0</div>
+        <div id="meta">第 1 关</div>
+        <div id="titleTag"></div>
+      </div>
+    </div>
+
+    <div id="duelBand">
+      <div id="myGrid" class="fgrid"><div class="fgridLabel">我方字格</div></div>
+      <div id="pv"><span id="pvText"></span></div>
+      <div id="foeGrid" class="fgrid"><div class="fgridLabel">敌方字格</div></div>
+    </div>
+
+    <div id="gridWrap"><div id="grid"></div></div>
+
+    <div id="bottom">
+      <div id="charlist"></div>
+      <div id="tip">字母拼出音节 · 声调对上才是那个字</div>
+    </div>
+
+    <div id="ladder">
+      <div id="ladderPanel">
+        <div id="lKey"></div>
+        <div id="lSub"></div>
+        <div id="lTones"></div>
+        <div id="lToneHint"></div>
+        <div id="lOpts"></div>
+        <button id="lCancel">取 消</button>
+      </div>
+    </div>
+
+    <div id="general">
+      <div class="gburst"></div>
+      <div class="gname">字将</div>
+      <div class="gword">出 战</div>
+    </div>
+
+    <div id="banner"><div class="bMain"></div><div class="bSub"></div></div>
+    <div id="comboTag"></div>
+
+    <div class="screen" id="startScreen">
+      <div class="eyebrow">长 坂 坡 · 赵 云 守 关</div>
+      <h1>拼字奇兵<br><em>拼音对拼</em></h1>
+      <p class="sub">对面的敌将也在拼字，<br>写着你拼的音的<b>木牌</b>会朝你走来。<br>
+      用字母拼出那个音：<span class="k">b</span>+<span class="k2">an</span> = <b>bān</b><br>
+      选对声调，挑出 <b>班·半·搬·爸</b> 里对的那个字<br>
+      选对的字落进我方字格，凑成词，字将出战！</p>
+      <div class="grades"><b style="color:#b8453a">3 条命 · 打空敌将血条就破一关 · 命用完收兵</b><br>1-5 关只管慢慢拼 · 6 关起对手照你的手速配 · 字从常用到生僻</div>
+      <div class="best">已学<b id="learnStart">0</b>字 · 拼字最多<b id="bestStart">0</b>字</div>
+      <div class="pace" id="paceRow">
+        <button class="pbtn on" data-pace="slow">慢 慢 打</button>
+        <button class="pbtn" data-pace="fast">正 常 速 度</button>
+      </div>
+      <button class="btn" id="startBtn">开 战</button>
+    </div>
+
+    <div class="screen hide" id="overScreen">
+      <div class="eyebrow" id="overTag">守 城 失 守</div>
+      <div class="overLv" id="overLv">第 1 关</div>
+      <div class="big" id="finalScore">0</div>
+      <div class="unit">个 字</div>
+      <div class="newrec" id="newRec">新 纪 录</div>
+      <div class="stat" id="overStat"></div>
+      <div class="comboBest" id="overCombo"></div>
+      <div class="verdict" id="overVerdict"></div>
+      <div class="verdictS" id="overVerdictS"></div>
+      <div class="runchars" id="runChars"></div>
+      <div class="best">最高纪录<b id="bestOver">0</b></div>
+      <button class="btn" id="againBtn">再 战 一 局</button>
+    </div>
+
+    <div class="screen hide" id="clearScreen">
+      <div class="eyebrow" id="csTag">第 1 关 · 胜</div>
+      <div class="big" id="csStreak">1</div>
+      <div class="unit">连 胜 场 数</div>
+      <div class="stat" id="csStat"></div>
+      <div class="runchars" id="csChars"></div>
+      <button class="btn" id="nextBtn">下 一 关</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =====================================================================
+     一、拼音字库
+     s=声母  m=介母（三拼）  y=韵母  c=汉字  p=带调音节
+     ===================================================================== */
+  var DB = [
+    /* ---------- 双拼 ---------- */
+    { s: 'b', y: 'a', c: '八', p: 'bā' },
+    { s: 'b', y: 'i', c: '笔', p: 'bǐ' },
+    { s: 'b', y: 'ai', c: '白', p: 'bái' },
+    { s: 'p', y: 'ao', c: '跑', p: 'pǎo' },
+    { s: 'p', y: 'a', c: '爬', p: 'pá' },
+    { s: 'm', y: 'a', c: '妈', p: 'mā' },
+    { s: 'm', y: 'en', c: '门', p: 'mén' },
+    { s: 'm', y: 'u', c: '木', p: 'mù' },
+    { s: 'f', y: 'ei', c: '飞', p: 'fēi' },
+    { s: 'f', y: 'eng', c: '风', p: 'fēng' },
+    { s: 'd', y: 'a', c: '大', p: 'dà' },
+    { s: 'd', y: 'i', c: '弟', p: 'dì' },
+    { s: 'd', y: 'ong', c: '冬', p: 'dōng' },
+    { s: 'd', y: 'u', c: '读', p: 'dú' },
+    { s: 'd', y: 'eng', c: '灯', p: 'dēng' },
+    { s: 't', y: 'a', c: '他', p: 'tā' },
+    { s: 't', y: 'u', c: '兔', p: 'tù' },
+    { s: 't', m: 'i', y: 'an', c: '天', p: 'tiān' },
+    { s: 'n', y: 'ai', c: '奶', p: 'nǎi' },
+    { s: 'n', y: 'iu', c: '牛', p: 'niú' },
+    { s: 'n', y: 'i', c: '你', p: 'nǐ' },
+    { s: 'l', y: 'u', c: '路', p: 'lù' },
+    { s: 'l', y: 'an', c: '蓝', p: 'lán' },
+    { s: 'g', y: 'e', c: '哥', p: 'gē' },
+    { s: 'g', y: 'ao', c: '高', p: 'gāo' },
+    { s: 'k', y: 'ai', c: '开', p: 'kāi' },
+    { s: 'k', y: 'an', c: '看', p: 'kàn' },
+    { s: 'h', y: 'ei', c: '黑', p: 'hēi' },
+    { s: 'h', y: 'ao', c: '好', p: 'hǎo' },
+    { s: 'j', y: 'i', c: '鸡', p: 'jī' },
+    { s: 'q', y: 'i', c: '七', p: 'qī' },
+    { s: 'q', y: 'iu', c: '秋', p: 'qiū' },
+    { s: 'sh', y: 'ui', c: '水', p: 'shuǐ' },
+    { s: 'sh', y: 'an', c: '山', p: 'shān' },
+    { s: 'sh', y: 'u', c: '书', p: 'shū' },
+    { s: 'r', y: 'i', c: '日', p: 'rì' },
+    { s: 'r', y: 'en', c: '人', p: 'rén' },
+    { s: 'z', y: 'ou', c: '走', p: 'zǒu' },
+    { s: 'z', y: 'ao', c: '早', p: 'zǎo' },
+    { s: 'c', y: 'ao', c: '草', p: 'cǎo' },
+    { s: 's', y: 'an', c: '三', p: 'sān' },
+    { s: 'y', y: 'u', c: '雨', p: 'yǔ' },
+    { s: 'y', y: 'un', c: '云', p: 'yún' },
+    { s: 'y', y: 'ue', c: '月', p: 'yuè' },
+    { s: 'w', y: 'o', c: '我', p: 'wǒ' },
+    { s: 'w', y: 'an', c: '玩', p: 'wán' },
+    { s: 'w', y: 'u', c: '五', p: 'wǔ' },
+    { s: 'ch', y: 'i', c: '吃', p: 'chī' },
+    { s: 'zh', y: 'i', c: '纸', p: 'zhǐ' },
+    { s: 'ch', y: 'e', c: '车', p: 'chē' },
+    { s: 'zh', y: 'an', c: '站', p: 'zhàn' },
+    { s: 'zh', y: 'ong', c: '中', p: 'zhōng' },
+
+    /* ---------- 三拼（声 + 介 + 韵） ---------- */
+    { s: 'h', m: 'u', y: 'o', c: '火', p: 'huǒ' },
+    { s: 'h', m: 'u', y: 'a', c: '花', p: 'huā' },
+    { s: 'g', m: 'u', y: 'a', c: '瓜', p: 'guā' },
+    { s: 'g', m: 'u', y: 'an', c: '关', p: 'guān' },
+    { s: 'k', m: 'u', y: 'ai', c: '快', p: 'kuài' },
+    { s: 'ch', m: 'u', y: 'an', c: '船', p: 'chuán' },
+    { s: 'ch', m: 'u', y: 'ang', c: '窗', p: 'chuāng' },
+    { s: 'd', m: 'u', y: 'o', c: '多', p: 'duō' },
+    { s: 'z', m: 'u', y: 'o', c: '左', p: 'zuǒ' },
+    { s: 'j', m: 'i', y: 'a', c: '家', p: 'jiā' },
+    { s: 'j', m: 'i', y: 'e', c: '姐', p: 'jiě' },
+    { s: 'q', m: 'i', y: 'ao', c: '桥', p: 'qiáo' },
+    { s: 'x', m: 'i', y: 'a', c: '下', p: 'xià' },
+    { s: 'x', m: 'i', y: 'ao', c: '小', p: 'xiǎo' },
+    { s: 'x', m: 'i', y: 'e', c: '写', p: 'xiě' },
+    { s: 'x', m: 'u', y: 'e', c: '学', p: 'xué' },
+
+    /* ---------- 补充批次：常用音节扩库 ---------- */
+    { s: 's', y: 'ong', c: '松', p: 'sōng' },
+    { s: 's', y: 'i', c: '四', p: 'sì' },
+    { s: 's', y: 'u', c: '速', p: 'sù' },
+    { s: 's', y: 'ui', c: '岁', p: 'suì' },
+    { s: 's', m: 'u', y: 'an', c: '算', p: 'suàn' },
+    { s: 's', y: 'un', c: '孙', p: 'sūn' },
+    { s: 's', m: 'u', y: 'o', c: '所', p: 'suǒ' },
+    { s: 's', y: 'ao', c: '扫', p: 'sǎo' },
+    { s: 'g', y: 'ou', c: '狗', p: 'gǒu' },
+    { s: 'g', y: 'u', c: '古', p: 'gǔ' },
+    { s: 'g', y: 'ui', c: '龟', p: 'guī' },
+    { s: 'g', y: 'an', c: '干', p: 'gān' },
+    { s: 't', y: 'ou', c: '头', p: 'tóu' },
+    { s: 't', y: 'ang', c: '糖', p: 'táng' },
+    { s: 't', y: 'ao', c: '桃', p: 'táo' },
+    { s: 'd', y: 'an', c: '蛋', p: 'dàn' },
+    { s: 'd', y: 'ui', c: '对', p: 'duì' },
+    { s: 'd', m: 'i', y: 'an', c: '电', p: 'diàn' },
+    { s: 'd', y: 'ie', c: '蝶', p: 'dié' },
+    { s: 'd', y: 'ai', c: '带', p: 'dài' },
+    { s: 'd', y: 'ou', c: '豆', p: 'dòu' },
+    { s: 'n', y: 'an', c: '男', p: 'nán' },
+    { s: 'l', y: 'ao', c: '老', p: 'lǎo' },
+    { s: 'l', m: 'i', y: 'ang', c: '两', p: 'liǎng' },
+    { s: 'l', y: 'ong', c: '龙', p: 'lóng' },
+    { s: 'l', y: 'i', c: '里', p: 'lǐ' },
+    { s: 'l', y: 'ei', c: '雷', p: 'léi' },
+    { s: 'b', y: 'an', c: '班', p: 'bān' },
+    { s: 'b', y: 'ao', c: '包', p: 'bāo' },
+    { s: 'b', y: 'ei', c: '北', p: 'běi' },
+    { s: 'b', y: 'en', c: '本', p: 'běn' },
+    { s: 'b', y: 'u', c: '不', p: 'bù' },
+    { s: 'b', y: 'ing', c: '冰', p: 'bīng' },
+    { s: 'p', y: 'ing', c: '平', p: 'píng' },
+    { s: 'm', y: 'ao', c: '猫', p: 'māo' },
+    { s: 'm', y: 'ai', c: '买', p: 'mǎi' },
+    { s: 'm', y: 'ei', c: '美', p: 'měi' },
+    { s: 'm', y: 'ing', c: '明', p: 'míng' },
+    { s: 'm', y: 'an', c: '满', p: 'mǎn' },
+    { s: 'f', y: 'u', c: '福', p: 'fú' },
+    { s: 'f', y: 'an', c: '饭', p: 'fàn' },
+    { s: 'f', y: 'ang', c: '方', p: 'fāng' },
+    { s: 'h', y: 'u', c: '虎', p: 'hǔ' },
+    { s: 'h', y: 'ai', c: '海', p: 'hǎi' },
+    { s: 'h', y: 'ui', c: '回', p: 'huí' },
+    { s: 'h', y: 'ou', c: '猴', p: 'hóu' },
+    { s: 'h', y: 'an', c: '汉', p: 'hàn' },
+    { s: 'h', m: 'u', y: 'an', c: '欢', p: 'huān' },
+    { s: 'j', m: 'i', y: 'an', c: '见', p: 'jiàn' },
+    { s: 'j', m: 'i', y: 'ao', c: '叫', p: 'jiào' },
+    { s: 'j', y: 'in', c: '金', p: 'jīn' },
+    { s: 'j', y: 'u', c: '句', p: 'jù' },
+    { s: 'j', y: 'un', c: '军', p: 'jūn' },
+    { s: 'q', m: 'i', y: 'an', c: '前', p: 'qián' },
+    { s: 'q', y: 'u', c: '去', p: 'qù' },
+    { s: 'q', y: 'ing', c: '青', p: 'qīng' },
+    { s: 'x', y: 'i', c: '西', p: 'xī' },
+    { s: 'x', y: 'in', c: '心', p: 'xīn' },
+    { s: 'x', m: 'i', y: 'an', c: '先', p: 'xiān' },
+    { s: 'x', y: 'ing', c: '星', p: 'xīng' },
+    { s: 'zh', y: 'ang', c: '张', p: 'zhāng' },
+    { s: 'zh', y: 'u', c: '猪', p: 'zhū' },
+    { s: 'zh', y: 'ao', c: '照', p: 'zhào' },
+    { s: 'zh', y: 'en', c: '真', p: 'zhēn' },
+    { s: 'ch', y: 'ang', c: '长', p: 'cháng' },
+    { s: 'ch', y: 'u', c: '出', p: 'chū' },
+    { s: 'sh', y: 'ang', c: '上', p: 'shàng' },
+    { s: 'sh', y: 'ou', c: '手', p: 'shǒu' },
+    { s: 'sh', y: 'eng', c: '生', p: 'shēng' },
+    { s: 'sh', y: 'en', c: '身', p: 'shēn' },
+    { s: 'sh', y: 'ao', c: '少', p: 'shǎo' },
+    { s: 'r', y: 'ou', c: '肉', p: 'ròu' },
+    { s: 'r', y: 'ang', c: '让', p: 'ràng' },
+    { s: 'z', y: 'i', c: '字', p: 'zì' },
+    { s: 'z', y: 'ai', c: '在', p: 'zài' },
+    { s: 'c', y: 'ai', c: '菜', p: 'cài' },
+    { s: 'c', y: 'ong', c: '从', p: 'cóng' },
+    { s: 'k', y: 'ong', c: '空', p: 'kōng' },
+    { s: 'k', y: 'u', c: '哭', p: 'kū' },
+    { s: 'k', y: 'e', c: '课', p: 'kè' },
+    { s: 'k', y: 'ou', c: '口', p: 'kǒu' },
+    { s: 'w', y: 'ei', c: '喂', p: 'wèi' },
+    { s: 'w', y: 'en', c: '文', p: 'wén' },
+    { s: 'w', y: 'ang', c: '王', p: 'wáng' },
+    { s: 'w', y: 'ai', c: '外', p: 'wài' },
+    { s: 'y', y: 'i', c: '一', p: 'yī' },
+    { s: 'y', y: 'an', c: '眼', p: 'yǎn' },
+    { s: 'y', y: 'ang', c: '羊', p: 'yáng' },
+    { s: 'y', y: 'ao', c: '要', p: 'yào' },
+    { s: 'y', y: 'ou', c: '有', p: 'yǒu' },
+    { s: 'y', y: 'e', c: '叶', p: 'yè' },
+    { s: 'y', y: 'in', c: '音', p: 'yīn' },
+    { s: 'y', y: 'ing', c: '影', p: 'yǐng' }
+  ];
+
+  /* =====================================================================
+     一·二、一二年级常用字表（统编版一年级上下 + 二年级上下 写字表/识字表）
+     选字面板只给孩子认得的字，超纲的（谬、鬓、镖、瞥……）一律不出现
+     ===================================================================== */
+  var KID_RAW =
+    /* 一上写字表 */
+    '一二三上口目耳手日田禾火虫云山水去来不小少牛果鸟早书刀尺本木林土力心中五立正八十了子人大月儿头里可东西天四是在后我好长比巴把下个雨们问有半从你才明同学自己衣白的又和竹牙马用几只石多出见对妈全回女开工厂' +
+    /* 一下写字表 */
+    '春冬风雪花飞入姓什么双国王方青清气晴情请生字左右红时动万间迷造运池欢网古凉细夕李语香打拍跑足声身体之相近习远玉义吃叫主江住没以会走北京门广过各种样伙伴这太阳校金秋因为他地河说也听哥单居招呼快乐玩很当音讲行棋许思床前光低故乡色外看爸晚笑再午节叶米真分豆那着到高兴千成首采无树爱尖角亮机台放鱼朵美直呀边呢吗吧加文次找平办让包钟丁元共已经坐要连百还舌点块非常往瓜进空病医别干奇七星吓怕跟家羊象都捉条爬姐您草房' +
+    /* 二上写字表 */
+    '园孔桥群队旗铜号领巾杨壮桐枫松柏棉杉化挂歌丛深处六熊猫九朋友季吹肥农事忙归辛苦年两就哪宽顶肚皮孩跳变极片傍海洋作给带法如脚它娃她毛更知识候柱底杆秤岁站船然老师由画妙合桌面课今写圆珠笔灯句电起哄先闭脸蛋沉发窗楼依尽层照炉烟川南部些巨位每升闪狗名声迹央丽华展现披份坡梯客收城市利井观沿答渴喝话际阵朗枯做却将纷夜棵谢想盯言邻治怪洪灾难道认被业产扁担志伍军战士怎忘泼度龙炮穿向令危敢惊阴似野苍茫于论岸屋久散步消弟互得坏帕汗扔妹唱赶旺旁浑谁轻汽食物眼爷命爪神活奶吵仔急咬第轮公围何觉感拥周反而羽挤挨败凶另诉信' +
+    /* 二下写字表 */
+    '州华岛峡民族谊齐奋贴街舟艾敬转团热闹贝壳甲骨钱币与财关烧茄烤鸭肉鸡蛋炒饭诗村童碧妆绿丝剪冲寻姑娘吐柳荡桃杏鲜邮递员原叔局堆礼邓植格引注满休息锋昨冒留弯背洒温暖能桌味买具甘甜菜劳匹波纹像景恋舍求彩梦森拉结苹般精灵伞姨便教游戏母周围补药死记屁股净幸使亡牢钻劝丢告精疲图摆座室交页抢愿意麦该伯刻突掉湖莲穷荷绝含岭吴雷乌黑压垂户新迎扑指针帮助导永碰特积杯失洗澡容易浴桶扇慢遇兔安根痛最店决定商夫终完换期蛙卖搬倒籽泉破应整抽纺织编怎布消祖啊浓望蓝摘掏赛忆世界功反复式简弄由觉值类艰弓炎害此' +
+    /* 一上识字表（认读，比写字表宽） */
+    '天地人你我他手足站坐石对雨花鸟虫爸妈画打棋鸡词语句桌纸文数乐妹奶小台雪草车路灯秋气树叶片会个的船两看闪星江南采莲鱼北尖说蛙夏弯皮就冬男关反远色近听无还黄只猫鸭苹果杏桃作业笔校尘众森条国旗红起丽昨晚今影前黑左右朋比尾谁短伞最公写诗过给当串成彩空到方更绿睡那真什亮时觉很衣服快笑向贝金叔爷竹步为参洞乌找旁许放住吧发芽爬呀变医院' +
+    /* 二上/二下识字表补充 */
+    '塘脑袋灰阿姨捕披鼓睛哇晒极滴溪奔洋坏淹没冲毁屋猜植如旅备纷刺离察识粗得脚娃毛京广灯船胡须知化湖绝岭乌垂户扑导针永碰特杯浴桶扇慢遇兔店商夫终换蛙搬卖籽破织编布消祖浓蓝摘赛忆界功复简弄值类拆';
+
+  var KID = {};
+  KID_RAW.split('').forEach(function (c) { if (c) KID[c] = true; });
+  /* 本游戏字库里的字都算“认得”，木牌照旧从里面出 */
+  DB.forEach(function (w) { KID[w.c] = true; });
+
+  /* 词表：两个字凑成常用词 → 营长出阵（2 点伤害）
+     四字成语 → 大将军出阵（3 点伤害，一击定胜负） */
+  var WORDS2 = [
+    '白云', '山水', '大小', '日月', '风雨', '花草', '水火', '高山', '蓝天', '秋雨',
+    '开花', '关门', '开门', '走路', '读书', '哥哥', '姐姐', '弟弟', '火车', '白天',
+    '小鸡', '小兔', '窗花', '好看', '好玩', '大家', '家人', '开车', '灯火', '车站',
+    '山路', '白兔', '水牛', '牛奶', '大人', '大风', '小雨', '雨水', '大水', '人家',
+    '小学', '中学', '大学', '跑车', '爬山', '白纸', '小船',
+    '上山', '小狗', '老虎', '下雨', '大海', '生日', '雨天', '金山', '长跑',
+    /* 扩充：一二年级生活常用词 */
+    '爸爸', '妈妈', '爷爷', '奶奶', '妹妹', '朋友', '同学', '老师', '学生', '名字',
+    '早上', '中午', '晚上', '今天', '明天', '昨天', '今年', '时间', '回家', '出门',
+    '天空', '天气', '太阳', '月亮', '星星', '白云', '春天', '夏天', '秋天', '冬天',
+    '树叶', '果子', '西瓜', '苹果', '米饭', '面条', '青菜', '鸡蛋', '糖果', '包子',
+    '飞鸟', '小鸟', '公鸡', '小马', '山羊', '蜜蜂', '蝴蝶', '青蛙', '鱼儿', '大海',
+    '江河', '石头', '土地', '森林', '树叶', '花朵', '青草', '禾苗', '种子', '果实',
+    '书本', '铅笔', '书包', '教室', '黑板', '作业', '读书', '写字', '画画', '唱歌',
+    '跳舞', '跑步', '踢球', '游戏', '快乐', '高兴', '开心', '生气', '害怕', '勇敢',
+    '爸爸妈妈', '儿子', '女儿', '孩子', '家乡', '中国', '北京', '长城', '黄河', '长江',
+    '东方', '西方', '南方', '北方', '左右', '前后', '上下', '里面', '外面', '中间',
+    '没有', '什么', '怎么', '为什么', '可以', '知道',
+    '喜欢', '想要', '看到', '听到', '说话', '吃饭', '睡觉', '起床', '洗脸', '洗手',
+    '红花', '绿叶', '黄花', '白纸', '黑马', '青色', '金黄', '雪白', '火红', '碧绿',
+    '飞机', '轮船', '汽车', '自行车', '路灯', '马路', '公园', '学校', '医院', '商店'
+  ];
+
+  /* 四字成语：能用这里面的字拼出来，就是大将军 */
+  var IDIOMS4 = [
+    '一心一意', '三心二意', '四面八方', '五颜六色', '七上八下', '十全十美',
+    '马马虎虎', '开开心心', '快快乐乐', '高高兴兴', '干干净净', '认认真真',
+    '大大小小', '多多少少', '来来回回', '上上下下', '前前后后', '左左右右',
+    '风和日丽', '山清水秀', '鸟语花香', '春暖花开', '秋高气爽', '冰天雪地',
+    '万里无云', '阳光明媚', '日月如梭', '天长地久', '山高水长', '水落石出',
+    '石破天惊', '风平浪静', '雨过天晴', '雪中送炭', '锦上添花', '画蛇添足',
+    '守株待兔', '亡羊补牢', '井底之蛙', '狐假虎威', '对牛弹琴', '拔苗助长',
+    '一心二用', '三三两两', '自言自语', '手忙脚乱', '目瞪口呆', '兴高采烈',
+    '全神贯注', '目不转睛', '大惊小怪', '小题大做', '有说有笑', '又高又大',
+    '人来人往', '车水马龙', '五光十色', '千军万马', '一马当先', '万紫千红'
+  ];
+
+  var SHENGMU = ['b', 'p', 'm', 'f', 'd', 't', 'n', 'l', 'g', 'k', 'h', 'j', 'q', 'x', 'zh', 'ch', 'sh', 'r', 'z', 'c', 's', 'y', 'w'];
+  var JIEMU = ['i', 'u'];
+  var YUNMU = ['a', 'o', 'e', 'i', 'u', 'ai', 'ei', 'ui', 'ao', 'ou', 'iu', 'ie', 'ue', 'an', 'en', 'in', 'un', 'ang', 'eng', 'ing', 'ong'];
+
+  function kindOf(v) {
+    if (SHENGMU.indexOf(v) >= 0) return 's';
+    if (JIEMU.indexOf(v) >= 0) return 'm';
+    return 'y';
+  }
+
+  function keyOf(w) {
+    var arr = [w.s];
+    if (w.m) arr.push(w.m);
+    arr.push(w.y);
+    return arr.sort().join('|');
+  }
+  var KEYMAP = {};
+  DB.forEach(function (w) {
+    var k = keyOf(w);
+    if (!KEYMAP[k]) KEYMAP[k] = w;
+  });
+  var CHAR_SET = {};
+  DB.forEach(function (w) { CHAR_SET[w.c] = true; });
+
+  /* =====================================================================
+     一·五、同音字阶梯字库
+     key = 声母+介母+韵母（无调），值 = 「汉字+带调拼音」逗号分隔
+     选出音节后，从同音字里挑对的那个
+     ===================================================================== */
+  var HOMO_RAW = {
+    'b+a': '八bā,爸bà,吧ba,把bǎ,拔bá',
+    'b+i': '笔bǐ,比bǐ,彼bǐ,碧bì,避bì',
+    'b+ai': '白bái,摆bǎi,百bǎi,拜bài,败bài',
+    'p+ao': '跑pǎo,泡pào,抛pāo,炮pào,袍páo',
+    'p+a': '爬pá,怕pà,趴pā,帕pà',
+    'm+a': '妈mā,马mǎ,码mǎ,骂mà,吗ma',
+    'm+en': '门mén,们men,闷mèn',
+    'm+u': '木mù,目mù,母mǔ,幕mù,慕mù',
+    'f+ei': '飞fēi,肥féi,费fèi,肺fèi,废fèi',
+    'f+eng': '风fēng,峰fēng,蜂fēng,丰fēng,封fēng',
+    'd+a': '大dà,打dǎ,达dá,答dá',
+    'd+i': '弟dì,地dì,低dī,底dǐ,滴dī',
+    'd+ong': '冬dōng,东dōng,懂dǒng,动dòng,洞dòng',
+    'd+u': '读dú,度dù,肚dù,堵dǔ,赌dǔ',
+    'd+eng': '灯dēng,等děng,登dēng,凳dèng',
+    't+a': '他tā,塌tā,塔tǎ,踏tà',
+    't+u': '兔tù,土tǔ,吐tǔ,图tú,途tú',
+    't+i+an': '天tiān,田tián,甜tián,填tián,舔tiǎn',
+    'n+ai': '奶nǎi,耐nài,奈nài',
+    'n+iu': '牛niú,扭niǔ,纽niǔ',
+    'n+i': '你nǐ,泥ní,尼ní,逆nì',
+    'l+u': '路lù,鹿lù,露lù,陆lù,录lù',
+    'l+an': '蓝lán,兰lán,拦lán,栏lán,篮lán',
+    'g+e': '哥gē,歌gē,鸽gē,格gé,阁gé',
+    'g+ao': '高gāo,糕gāo,告gào,搞gǎo,稿gǎo',
+    'k+ai': '开kāi,凯kǎi,慨kǎi',
+    'k+an': '看kàn,砍kǎn,坎kǎn',
+    'h+ei': '黑hēi,嘿hēi',
+    'h+ao': '好hǎo,号hào,毫háo,豪háo',
+    'j+i': '鸡jī,机jī,极jí,急jí,记jì',
+    'q+i': '七qī,期qī,棋qí,骑qí,汽qì',
+    'q+iu': '秋qiū,球qiú,求qiú,囚qiú',
+    'sh+ui': '水shuǐ,睡shuì,税shuì',
+    'sh+an': '山shān,衫shān,闪shǎn,扇shàn,善shàn',
+    'sh+u': '书shū,输shū,熟shú,树shù,属shǔ',
+    'r+i': '日rì',
+    'r+en': '人rén,仁rén,忍rěn,认rèn,任rèn',
+    'z+ou': '走zǒu,揍zòu',
+    'z+ao': '早zǎo,枣zǎo,遭zāo,造zào,灶zào',
+    'c+ao': '草cǎo,操cāo,槽cáo,曹cáo',
+    's+an': '三sān,伞sǎn,散sàn',
+    'y+u': '雨yǔ,语yǔ,羽yǔ,宇yǔ,与yǔ',
+    'y+un': '云yún,允yǔn,运yùn,韵yùn',
+    'y+ue': '月yuè,越yuè,约yuē,悦yuè',
+    'w+o': '我wǒ,卧wò,握wò,沃wò',
+    'w+an': '玩wán,完wán,晚wǎn,碗wǎn,万wàn',
+    'w+u': '五wǔ,午wǔ,武wǔ,舞wǔ,物wù',
+    'ch+i': '吃chī,尺chǐ,池chí,迟chí,赤chì',
+    'zh+i': '纸zhǐ,之zhī,只zhǐ,直zhí,志zhì',
+    'ch+e': '车chē,扯chě,撤chè',
+    'zh+an': '站zhàn,战zhàn,沾zhān,斩zhǎn',
+    'zh+ong': '中zhōng,忠zhōng,钟zhōng,种zhòng',
+    'h+u+o': '火huǒ,伙huǒ,或huò,货huò,获huò',
+    'h+u+a': '花huā,华huá,滑huá,化huà,话huà',
+    'g+u+a': '瓜guā,刮guā,呱guā,挂guà,寡guǎ',
+    'g+u+an': '关guān,官guān,观guān,管guǎn,冠guàn',
+    'k+u+ai': '快kuài,筷kuài,块kuài,会kuài',
+    'ch+u+an': '船chuán,传chuán,穿chuān,喘chuǎn,串chuàn',
+    'ch+u+ang': '窗chuāng,床chuáng,闯chuǎng,创chuàng',
+    'd+u+o': '多duō,朵duǒ,躲duǒ,舵duò,剁duò',
+    'z+u+o': '左zuǒ,昨zuó,坐zuò,座zuò,作zuò',
+    'j+i+a': '家jiā,加jiā,佳jiā,假jiǎ,价jià',
+    'j+i+e': '姐jiě,接jiē,街jiē,结jié,界jiè',
+    'q+i+ao': '桥qiáo,瞧qiáo,悄qiāo,巧qiǎo,俏qiào',
+    'x+i+a': '下xià,夏xià,虾xiā,瞎xiā,侠xiá',
+    'x+i+ao': '小xiǎo,晓xiǎo,消xiāo,笑xiào,孝xiào',
+    'x+i+e': '写xiě,些xiē,鞋xié,蟹xiè,泻xiè',
+    'x+u+e': '学xué,靴xuē,雪xuě,穴xué,血xuè',
+
+    /* ---------- 补充批次：同音字组 ---------- */
+    's+ong': '松sōng,送sòng,宋sòng,耸sǒng',
+    's+i': '四sì,丝sī,死sǐ,似sì',
+    's+u': '速sù,素sù,诉sù,宿sù',
+    's+ui': '岁suì,碎suì,随suí',
+    's+u+an': '算suàn,酸suān,蒜suàn',
+    's+un': '孙sūn,笋sǔn',
+    's+u+o': '所suǒ,锁suǒ,缩suō',
+    's+ao': '扫sǎo,嫂sǎo',
+    'g+ou': '狗gǒu,够gòu,沟gōu,购gòu',
+    'g+u': '古gǔ,骨gǔ,谷gǔ,故gù,顾gù',
+    'g+ui': '龟guī,鬼guǐ,贵guì,柜guì,规guī',
+    'g+an': '干gān,甘gān,赶gǎn,杆gǎn,肝gān',
+    't+ou': '头tóu,投tóu,透tòu',
+    't+ang': '汤tāng,糖táng,躺tǎng,烫tàng,堂táng',
+    't+ao': '桃táo,逃táo,讨tǎo,淘táo',
+    'd+an': '单dān,胆dǎn,蛋dàn,弹dàn,旦dàn',
+    'd+ui': '对duì,队duì,堆duī,兑duì',
+    'd+i+an': '点diǎn,电diàn,店diàn,殿diàn,垫diàn',
+    'd+ie': '蝶dié,叠dié,爹diē',
+    'd+ai': '带dài,呆dāi,戴dài,代dài,袋dài',
+    'd+ou': '豆dòu,斗dòu,逗dòu,都dōu',
+    'n+an': '男nán,南nán,难nán',
+    'l+ao': '老lǎo,捞lāo,牢láo,姥lǎo,涝lào',
+    'l+i+ang': '两liǎng,亮liàng,凉liáng,粮liáng,良liáng',
+    'l+ong': '龙lóng,笼lóng,隆lóng,聋lóng',
+    'l+i': '里lǐ,力lì,立lì,李lǐ,礼lǐ',
+    'l+ei': '雷léi,泪lèi,累lèi,磊lěi',
+    'b+an': '班bān,搬bān,半bàn,办bàn,板bǎn',
+    'b+ao': '包bāo,饱bǎo,抱bào,苞bāo,胞bāo',
+    'b+ei': '北běi,杯bēi,被bèi,倍bèi,辈bèi',
+    'b+en': '本běn,笨bèn,奔bēn',
+    'b+u': '不bù,步bù,部bù,补bǔ,捕bǔ',
+    'b+ing': '冰bīng,兵bīng,饼bǐng,并bìng',
+    'p+ing': '乒pīng,平píng,苹píng,瓶píng,评píng,萍píng',
+    'm+ao': '猫māo,毛máo,帽mào,锚máo,贸mào',
+    'm+ai': '买mǎi,卖mài,迈mài,麦mài,埋mái',
+    'm+ei': '没méi,美měi,妹mèi,眉méi,媒méi',
+    'm+ing': '明míng,名míng,命mìng,铭míng',
+    'm+an': '满mǎn,慢màn,蛮mán,瞒mán',
+    'f+u': '福fú,服fú,扶fú,富fù,父fù',
+    'f+an': '饭fàn,翻fān,反fǎn,犯fàn,番fān',
+    'f+ang': '方fāng,房fáng,放fàng,访fǎng,防fáng',
+    'h+u': '虎hǔ,湖hú,狐hú,户hù,互hù',
+    'h+ai': '海hǎi,还hái,害hài,孩hái',
+    'h+ui': '回huí,会huì,灰huī,挥huī,汇huì',
+    'h+ou': '猴hóu,后hòu,厚hòu,候hòu',
+    'h+an': '汉hàn,喊hǎn,汗hàn,含hán,寒hán',
+    'h+u+an': '欢huān,环huán,换huàn,缓huǎn,幻huàn',
+    'j+i+an': '见jiàn,间jiān,尖jiān,件jiàn,剪jiǎn',
+    'j+i+ao': '叫jiào,交jiāo,角jiǎo,脚jiǎo',
+    'j+in': '金jīn,今jīn,进jìn,近jìn,斤jīn',
+    'j+u': '句jù,局jú,菊jú,矩jǔ',
+    'j+un': '军jūn,均jūn,菌jūn',
+    'q+i+an': '前qián,千qiān,钱qián,浅qiǎn,欠qiàn',
+    'q+u': '去qù,趣qù,娶qǔ,曲qū',
+    'q+ing': '青qīng,清qīng,请qǐng,晴qíng,蜻qīng',
+    'x+i': '西xī,洗xǐ,喜xǐ,细xì,系xì',
+    'x+in': '心xīn,新xīn,信xìn,薪xīn',
+    'x+i+an': '先xiān,现xiàn,线xiàn,闲xián,险xiǎn',
+    'x+ing': '星xīng,行xíng,醒xǐng,姓xìng,幸xìng',
+    'zh+ang': '张zhāng,章zhāng,掌zhǎng,涨zhǎng,帐zhàng',
+    'zh+u': '猪zhū,竹zhú,住zhù,珠zhū,煮zhǔ',
+    'zh+ao': '照zhào,找zhǎo,招zhāo,罩zhào,沼zhǎo',
+    'zh+en': '真zhēn,阵zhèn,镇zhèn,枕zhěn,震zhèn',
+    'ch+ang': '长cháng,常cháng,唱chàng,厂chǎng,场chǎng',
+    'ch+u': '出chū,处chù,触chù,础chǔ,储chǔ',
+    'sh+ang': '上shàng,伤shāng,商shāng,赏shǎng',
+    'sh+ou': '手shǒu,收shōu,守shǒu,受shòu,售shòu',
+    'sh+eng': '生shēng,声shēng,胜shèng,绳shéng,升shēng',
+    'sh+en': '身shēn,深shēn,神shén,审shěn,申shēn',
+    'sh+ao': '少shǎo,烧shāo,勺sháo,绍shào,稍shāo',
+    'r+ou': '肉ròu,柔róu',
+    'r+ang': '让ràng,嚷rǎng,壤rǎng',
+    'z+i': '字zì,自zì,子zǐ,紫zǐ,姿zī',
+    'z+ai': '在zài,再zài,栽zāi,灾zāi',
+    'c+ai': '菜cài,才cái,财cái,彩cǎi,踩cǎi',
+    'c+ong': '从cóng,丛cóng,聪cōng,葱cōng',
+    'k+ong': '空kōng,孔kǒng,恐kǒng',
+    'k+u': '哭kū,苦kǔ,库kù,裤kù',
+    'k+e': '课kè,渴kě,刻kè,颗kē,棵kē',
+    'k+ou': '口kǒu,扣kòu',
+    'w+ei': '喂wèi,位wèi,卫wèi,围wéi,微wēi',
+    'w+en': '文wén,问wèn,闻wén,稳wěn,蚊wén',
+    'w+ang': '王wáng,往wǎng,忘wàng,望wàng,网wǎng',
+    'w+ai': '外wài,歪wāi',
+    'y+i': '一yī,衣yī,医yī,已yǐ,意yì',
+    'y+an': '眼yǎn,烟yān,燕yàn,颜yán,沿yán',
+    'y+ang': '羊yáng,阳yáng,样yàng,洋yáng,扬yáng',
+    'y+ao': '要yào,药yào,咬yǎo,腰yāo,摇yáo',
+    'y+ou': '有yǒu,又yòu,右yòu,游yóu,油yóu',
+    'y+e': '叶yè,夜yè,爷yé,也yě,页yè',
+    'y+in': '音yīn,银yín,引yǐn,印yìn',
+    'y+ing': '影yǐng,鹰yīng,迎yíng,赢yíng,硬yìng',
+
+    /* ---- 补缺音节：之前这些合法音节没有字，选了字母会没反应 ---- */
+    'ch+ai': '拆chāi,柴chái',
+    'z+u+o': '坐zuò,座zuò,作zuò,昨zuó,左zuǒ',
+    'c+u+o': '错cuò,搓cuō',
+    's+u+o': '所suǒ,锁suǒ,缩suō',
+    's+u+an': '算suàn,酸suān,蒜suàn',
+    'r+u+o': '若ruò,弱ruò',
+    'y+u+an': '远yuǎn,元yuán,园yuán,圆yuán,院yuàn,原yuán,员yuán,愿yuàn'
+  };
+  /* 全量同音字表（不按年级过滤），HOMO 只是它在当前关卡的可取子集 */
+  var HOMO_ALL = {};
+  Object.keys(HOMO_RAW).forEach(function (k) {
+    var letters = k.split('+').sort().join('|');
+    var arr = HOMO_RAW[k].split(',').map(function (tok) {
+      return { c: tok.charAt(0), p: tok.slice(1) };
+    });
+    HOMO_ALL[letters] = arr;
+  });
+
+  /* =====================================================================
+     一·六、全音节补充表
+     只要拼音合法（普通话里存在这个音节），就能拼出字——
+     覆盖上面主字库没收录的音节，如 w+a=蛙、l+a=拉、sh+i=是
+     ===================================================================== */
+  var EXTRA_RAW = {
+    'b+ang': '帮bāng,邦bāng,榜bǎng,棒bàng',
+    'b+i+ao': '表biǎo,彪biāo,镖biāo',
+    'b+ie': '别bié,憋biē',
+    'b+in': '宾bīn,滨bīn,鬓bìn',
+    'b+o': '波bō,玻bō,播bō,拨bō',
+    'b+eng': '蹦bèng,绷bēng,迸bèng',
+    'b+i+an': '边biān,变biàn,便biàn,遍biàn',
+    'p+ai': '拍pāi,排pái,牌pái,派pài',
+    'p+an': '攀pān,盘pán,判pàn,盼pàn',
+    'p+ang': '乓pāng,庞páng,旁páng,胖pàng',
+    'p+ei': '呸pēi,陪péi,佩pèi,配pèi',
+    'p+en': '喷pēn,盆pén',
+    'p+eng': '朋péng,棚péng,捧pěng,碰pèng',
+    'p+i': '批pī,脾pí,皮pí,屁pì',
+    'p+i+an': '篇piān,偏piān,片piàn,骗piàn',
+    'p+i+ao': '漂piāo,瓢piáo,票piào',
+    'p+ie': '瞥piē,撇piě',
+    'p+in': '拼pīn,贫pín,品pǐn',
+    'p+o': '泼pō,坡pō,婆pó,破pò',
+    'p+u': '扑pū,铺pū,普pǔ,谱pǔ',
+    'p+ou': '剖pōu',
+    'm+ang': '忙máng,芒máng,茫máng,莽mǎng',
+    'm+e': '么me',
+    'm+eng': '蒙méng,盟méng,猛měng,梦mèng',
+    'm+i': '迷mí,米mǐ,秘mì,蜜mì',
+    'm+i+an': '眠mián,棉mián,免miǎn,面miàn',
+    'm+i+ao': '苗miáo,秒miǎo,妙miào',
+    'm+ie': '灭miè',
+    'm+in': '民mín,敏mǐn',
+    'm+o': '摸mō,魔mó,抹mǒ,墨mò,末mò',
+    'm+ou': '谋móu,某mǒu',
+    'f+a': '发fā,罚fá,伐fá,法fǎ',
+    'f+en': '分fēn,坟fén,粉fěn,份fèn',
+    'f+o': '佛fó',
+    'f+ou': '否fǒu',
+    'd+ang': '当dāng,挡dǎng,党dǎng,荡dàng',
+    'd+ao': '刀dāo,岛dǎo,倒dǎo,到dào,道dào',
+    'd+e': '的de,德dé',
+    'd+ing': '钉dīng,顶dǐng,定dìng,订dìng',
+    'd+iu': '丢diū',
+    'd+u+an': '端duān,短duǎn,段duàn,断duàn',
+    'd+un': '吨dūn,蹲dūn,盾dùn,顿dùn',
+    'd+i+ao': '叼diāo,掉diào,钓diào',
+    't+ai': '台tái,抬tái,太tài,态tài',
+    't+an': '摊tān,谈tán,毯tǎn,探tàn',
+    't+e': '特tè',
+    't+eng': '疼téng,藤téng',
+    't+i': '踢tī,提tí,体tǐ,剃tì',
+    't+i+ao': '挑tiāo,条tiáo,跳tiào',
+    't+ie': '帖tiě,铁tiě',
+    't+ing': '厅tīng,听tīng,停tíng,挺tǐng',
+    't+ong': '通tōng,同tóng,铜tóng,桶tǒng,痛tòng',
+    't+u+an': '团tuán',
+    't+ui': '推tuī,腿tuǐ,退tuì',
+    't+un': '吞tūn,屯tún',
+    't+u+o': '拖tuō,妥tuǒ,脱tuō,驼tuó',
+    'n+a': '拿ná,哪nǎ,那nà',
+    'n+ao': '恼nǎo,脑nǎo,闹nào',
+    'n+e': '呢ne',
+    'n+ei': '内nèi',
+    'n+en': '嫩nèn',
+    'n+eng': '能néng',
+    'n+i+an': '年nián,捻niǎn,念niàn',
+    'n+i+ang': '娘niáng,酿niàng',
+    'n+i+ao': '鸟niǎo,尿niào',
+    'n+ie': '捏niē',
+    'n+in': '您nín',
+    'n+ing': '宁níng,柠níng,凝níng',
+    'n+ong': '农nóng,浓nóng,弄nòng',
+    'n+u': '奴nú,努nǔ,怒nù',
+    'n+u+an': '暖nuǎn',
+    'n+u+o': '挪nuó,诺nuò,糯nuò',
+    'l+a': '拉lā,啦la,喇lǎ,蜡là,辣là',
+    'l+ai': '莱lái,来lái,赖lài',
+    'l+ang': '狼láng,廊láng,朗lǎng,浪làng',
+    'l+e': '了le,乐lè',
+    'l+eng': '冷lěng,愣lèng',
+    'l+i+a': '俩liǎ',
+    'l+i+an': '连lián,莲lián,脸liǎn,练liàn,恋liàn',
+    'l+i+ao': '辽liáo,疗liáo,聊liáo,料liào',
+    'l+ie': '列liè,烈liè,猎liè,裂liè',
+    'l+in': '邻lín,林lín,淋lín,凛lǐn',
+    'l+ing': '零líng,龄líng,铃líng,领lǐng,另lìng',
+    'l+iu': '留liú,流liú,六liù,柳liǔ',
+    'l+ou': '楼lóu,漏lòu,陋lòu',
+    'l+u+an': '卵luǎn,乱luàn',
+    'l+un': '轮lún,论lùn',
+    'l+u+o': '罗luó,锣luó,裸luǒ,洛luò,落luò',
+    'g+a': '嘎gā',
+    'g+ai': '该gāi,改gǎi,盖gài,丐gài',
+    'g+ang': '刚gāng,钢gāng,岗gǎng,港gǎng,杠gàng',
+    'g+ei': '给gěi',
+    'g+en': '根gēn,跟gēn',
+    'g+eng': '耕gēng,耿gěng,更gèng',
+    'g+ong': '工gōng,公gōng,宫gōng,攻gōng,共gòng',
+    'g+u+ai': '乖guāi,拐guǎi,怪guài',
+    'g+u+ang': '光guāng,广guǎng,逛guàng',
+    'g+un': '滚gǔn,棍gùn',
+    'g+u+o': '锅guō,国guó,果guǒ,过guò',
+    'k+a': '咖kā,卡kǎ',
+    'k+ang': '康kāng,抗kàng,炕kàng',
+    'k+ao': '考kǎo,烤kǎo,靠kào',
+    'k+en': '肯kěn,恳kěn',
+    'k+eng': '坑kēng',
+    'k+u+a': '夸kuā,垮kuǎ,跨kuà',
+    'k+u+an': '宽kuān,款kuǎn',
+    'k+u+ang': '筐kuāng,狂kuáng,框kuàng',
+    'k+ui': '亏kuī,盔kuī,葵kuí,愧kuì',
+    'k+un': '昆kūn,捆kǔn,困kùn',
+    'k+u+o': '扩kuò,阔kuò',
+    'h+a': '哈hā,蛤há',
+    'h+ang': '夯hāng,行háng,航háng',
+    'h+e': '喝hē,盒hé,河hé,荷hé,贺hè',
+    'h+en': '很hěn,狠hěn,恨hèn',
+    'h+eng': '恒héng,横héng',
+    'h+ong': '轰hōng,哄hǒng,虹hóng,红hóng',
+    'h+u+ai': '怀huái,坏huài',
+    'h+u+ang': '荒huāng,黄huáng,晃huǎng,谎huǎng',
+    'h+un': '婚hūn,魂hún,混hùn',
+    'j+i+ang': '江jiāng,姜jiāng,将jiāng,讲jiǎng,匠jiàng',
+    'j+ing': '京jīng,经jīng,惊jīng,井jǐng,静jìng',
+    'j+iu': '究jiū,九jiǔ,酒jiǔ,旧jiù,救jiù',
+    'j+u+an': '捐juān,卷juǎn,眷juàn',
+    'j+u+e': '决jué,觉jué,绝jué',
+    'q+i+a': '掐qiā,恰qià',
+    'q+i+ang': '枪qiāng,墙qiáng,抢qiǎng',
+    'q+ie': '切qiē,且qiě,茄qié',
+    'q+in': '亲qīn,琴qín,勤qín,寝qǐn',
+    'q+i+ong': '穷qióng',
+    'q+u+an': '圈quān,全quán,泉quán,劝quàn',
+    'q+u+e': '缺quē,却què,确què',
+    'q+un': '裙qún,群qún',
+    'x+i+ang': '香xiāng,箱xiāng,响xiǎng,想xiǎng,象xiàng',
+    'x+i+ong': '凶xiōng,熊xióng',
+    'x+iu': '休xiū,修xiū,秀xiù,袖xiù',
+    'x+u': '需xū,许xǔ,序xù,续xù',
+    'x+u+an': '宣xuān,旋xuán,选xuǎn',
+    'x+un': '寻xún,巡xún,训xùn',
+    'zh+a': '扎zhā,眨zhǎ,炸zhà,榨zhà',
+    'zh+ai': '摘zhāi,窄zhǎi,债zhài',
+    'zh+e': '折zhé,这zhè,浙zhè',
+    'zh+eng': '争zhēng,征zhēng,整zhěng,正zhèng,挣zhèng',
+    'zh+ou': '粥zhōu,州zhōu,轴zhóu,皱zhòu',
+    'zh+u+a': '抓zhuā',
+    'zh+u+ai': '拽zhuài',
+    'zh+u+an': '专zhuān,转zhuǎn,赚zhuàn',
+    'zh+u+ang': '庄zhuāng,装zhuāng,撞zhuàng',
+    'zh+ui': '追zhuī,坠zhuì',
+    'zh+un': '准zhǔn',
+    'zh+u+o': '捉zhuō,桌zhuō,灼zhuó',
+    'ch+a': '叉chā,茶chá,察chá,差chà',
+    'ch+ai': '拆chāi,柴chái',
+    'ch+an': '馋chán,缠chán,产chǎn',
+    'ch+ao': '超chāo,朝cháo,吵chǎo,炒chǎo',
+    'ch+en': '尘chén,沉chén,趁chèn,衬chèn',
+    'ch+eng': '成chéng,城chéng,乘chéng,秤chèng',
+    'ch+ong': '冲chōng,虫chóng,宠chǒng',
+    'ch+ou': '抽chōu,丑chǒu,愁chóu',
+    'ch+u+ai': '揣chuāi',
+    'ch+ui': '吹chuī,垂chuí,锤chuí',
+    'ch+un': '春chūn,纯chún,唇chún',
+    'ch+u+o': '戳chuō',
+    'sh+a': '杀shā,沙shā,纱shā,傻shǎ',
+    'sh+ai': '筛shāi,晒shài',
+    'sh+e': '蛇shé,舍shě,设shè,社shè',
+    'sh+ei': '谁shéi',
+    'sh+i': '师shī,时shí,十shí,石shí,是shì',
+    'sh+u+a': '刷shuā',
+    'sh+u+ai': '摔shuāi,甩shuǎi,帅shuài',
+    'sh+u+an': '拴shuān,栓shuān',
+    'sh+u+ang': '双shuāng,爽shuǎng',
+    'sh+un': '顺shùn',
+    'sh+u+o': '说shuō,硕shuò',
+    'r+an': '然rán,染rǎn',
+    'r+ao': '扰rǎo,绕rào',
+    'r+e': '热rè',
+    'r+eng': '扔rēng,仍réng',
+    'r+ong': '绒róng,容róng,荣róng,融róng',
+    'r+u': '如rú,乳rǔ,入rù',
+    'r+u+an': '软ruǎn',
+    'r+ui': '蕊ruǐ,锐ruì,瑞ruì',
+    'r+un': '润rùn',
+    'r+u+o': '若ruò,弱ruò',
+    'z+a': '杂zá',
+    'z+an': '咱zán,攒zǎn',
+    'z+ang': '脏zāng,葬zàng',
+    'z+e': '则zé,择zé,泽zé',
+    'z+ei': '贼zéi',
+    'z+en': '怎zěn',
+    'z+eng': '增zēng',
+    'z+ong': '宗zōng,棕zōng,总zǒng',
+    'z+u': '足zú,组zǔ,祖zǔ,族zú',
+    'z+u+an': '钻zuān',
+    'z+ui': '嘴zuǐ,最zuì,醉zuì',
+    'z+un': '尊zūn,遵zūn',
+    'c+a': '擦cā',
+    'c+an': '餐cān,惨cǎn,灿càn',
+    'c+ang': '仓cāng,苍cāng,藏cáng',
+    'c+e': '册cè,测cè,侧cè',
+    'c+eng': '层céng,蹭cèng',
+    'c+i': '瓷cí,词cí,此cǐ,刺cì',
+    'c+ou': '凑còu',
+    'c+u': '粗cū,促cù,醋cù',
+    'c+u+an': '窜cuàn',
+    'c+ui': '催cuī,脆cuì,翠cuì',
+    'c+un': '村cūn,存cún,寸cùn',
+    'c+u+o': '搓cuō,措cuò,错cuò',
+    's+a': '撒sā,萨sà',
+    's+ai': '腮sāi,塞sāi,赛sài',
+    's+ang': '桑sāng,嗓sǎng,丧sàng',
+    's+e': '色sè,涩sè',
+    's+en': '森sēn',
+    's+eng': '僧sēng',
+    's+ou': '搜sōu,艘sōu',
+    'y+a': '压yā,呀yā,鸭yā,牙yá,雅yǎ',
+    'y+ong': '涌yǒng,勇yǒng,泳yǒng,用yòng',
+    'w+a': '蛙wā,娃wá,瓦wǎ,袜wà',
+    'w+eng': '翁wēng',
+    'm+iu': '谬miù',
+    'd+ei': '得děi',
+    
+    'j+ie': '接jiē,街jiē,结jié,姐jiě,界jiè'
+  };
+  Object.keys(EXTRA_RAW).forEach(function (k) {
+    var letters = k.split('+').sort().join('|');
+    if (!HOMO_ALL[letters]) {
+      HOMO_ALL[letters] = EXTRA_RAW[k].split(',').map(function (tok) {
+        return { c: tok.charAt(0), p: tok.slice(1) };
+      });
+    }
+  });
+
+  /* 字库里的字必须都在同音字表里出现，否则木牌上的字永远拼不出来 */
+  DB.forEach(function (w) {
+    var k = keyOf(w), arr = HOMO_ALL[k];
+    if (!arr) return;
+    for (var i = 0; i < arr.length; i++) { if (arr[i].c === w.c) return; }
+    arr.push({ c: w.c, p: w.p });
+  });
+
+  /* =====================================================================
+     一·五、关卡分档：字库按年级分段放开
+     1~4 阵：一二年级   5~10 阵：加入三四年级   11 阵起：全字库随机
+     ===================================================================== */
+  var G34_RAW =
+    /* 三上写字表 */
+    '晨绒球汉艳服装扮读静停粗影落荒笛舞狂罚假互所够猜扬臂寒径斜霜赠刘盖菊残君橙送挑铺泥晶紧院印排列规则乱棕迟盒颜料票飘争仙闻梨勾油曲丰柴冷旧裙怜饿乎焰蜡烛富诉离旅咱救命拼扫胃管等刚流泪算洞准备暴墙壁砍蜘蛛漂撞饱晒搭亲父沙啦响羽翠嘴悄吞哦捕蒲英盛耍喊欠钓而察拢趣喜睡断楚至孤帆饮初镜未磨遥银盘优淡浅错岩虾挺鼓数厚宝贵滨灰渔遍躺载靠栽亚夏除踩洁脑袋严实挡视线坛显材软刮库妙演奏琴柔感受激击器滴敲鸣朝雾蒙鼻总抖露湿吸猎翅膀重刺枣颗忽暗伸匆沟聪偷追腰司庭登跌众弃持掌班默腿轮投调摇晃烈勇崔郊养粉谷粒男或者冻惜肯诚' +
+    /* 三下写字表 */
+    '融燕鸳鸯惠崇芦芽短梅溪泛减凑拂集聚形掠偶尔沾倦闲纤痕瓣蓬胀裂姿势仿佛随蹈止守株待宋耕触颈释其骄傲谦虚懦弱提尘捧代价鹿塘映欣赏匀致配传哎狮叹符欲魂借酒何牧兄独异佳术伟录册保存约验阿欧洲社赵省县匠设计史创举且智慧历斗芬芳内醒寿苏强示昆修建组蜜蜂辨阻跨括检查确误途陌淌秘密栋梯铃乘绪篇越状狐狸丁零巧克肠继续抬麻烦墨染竿腾碎拨浪葫爽蘑菇表胆鬼理夺骂仇差付倍虽泡件皂廊剩碗悠若透娇抑仰串婴希呈幻诱润芒冰剑普通模型宁官汪险参攻推迅速退煤铁必胡灿骑秒凶猛接庙威武镇性卷货取夹夸务衬衫负责艺漏喂胖驴贼狼莫厉抱架胶粘偏' +
+    /* 四上写字表 */
+    '潮据堤阔笼罩盼滚顿逐犹崩震余淘牵鹅卵填庄稼俗跃葡萄稻熟豌按适恐枪耐玻璃探愉绕曾达蚊即科横竖绳系证研究驾驶唤纪技程超亿索奥益联质任善暮吟题侧峰庐缘降阁费须逊输虎操占嫩舒顺均叠隙茎萎瞧固宅临选择址良穴厅卧专寸卫钳较锯劈缓浊丈撑竭累血液奔茂滋宗帝曰溺返衔悲惨兽佩坚违抗环锁既狠著愤获筝拔蝴蝶福托梢歇踪丧圈坊嗅呆奈巢齿躯掩护幼搏庞量愣摸甚跪捶顽脖脱概惹昏握摔凭掐念级段俩裤改逃亏挖堂锅砸否旋况兵败仍尤恨帅预溃品丑豪塞秦征词催杰亦雄项沈肃晰振胸怀赞效租疑惑凡顾训斥戎尝诸竞唯豹魏派娶媳妇淹硬逼浮旱徒饶' +
+    /* 四下写字表 */
+    '杂稀篱蜻蜓蝶宿徐疏茅檐翁赖剥构饰蹲凤序例率觅耸踏倘绘谐寄眠慰藉卜锐滩帐烁蝙蝠霸鹰怒吼脂拭餐划晌辣渗挣番埋刷测详笨钝谈鸽毫末描隧态吨颅膨肢翼辟纳拥箱臭蔬碳钢隐健康胞疾防灶需繁漫灭藤萝膝涛躲瓶挤叉挥桦涂茸绣潇穗朦胧寂霞抹忧虑贪职屏蹭稿腔解闷蛇遭殃盆勃讨厌坝忠毒绩孵警戒歪咕汤掘伏啼吠促颇剧苟譬侍馆附脾敏捷昂供添扩范努刹烂替镶紫仅浙罗杜鹃窄郁肩臀移额乳笋端源晋炕铅迈呜栓胳膊劫绸扒敌尸趁慌芙蓉洛壶雁砚乾坤囊萤恭勤博贫焉逢卒伦腹剖窟窿混嘶维秩卑岗宰措遣践介绍妖矩乖撵烫溜丫拽福舔葵瘦罢硕允砌牌禁惩踪啸私颊拆';
+
+  var G34 = {};
+  G34_RAW.split('').forEach(function (c) { if (c) G34[c] = true; });
+
+  /* 关卡难度带（只表示节奏）：1 = 1~5 关最松，2 = 6~10 关加速，3 = 11 关起全速 */
+  function tierOf(level) {
+    if (level <= 5) return 1;
+    if (level <= 10) return 2;
+    return 3;
+  }
+  function tierLabel(level) {
+    var t = tierOf(level);
+    return t === 1 ? '慢慢来' : (t === 2 ? '加速中' : '全速');
+  }
+
+  /* 全字库都用：音节合法就一定能出字；难度只体现在「先常用、后生僻」 */
+  var HOMO = {};
+  var TARGETS = [];        /* 三个难度池合并的全部木牌目标 */
+  var TARGETS_G34 = [];    /* 进阶字池（兼容旧引用） */
+  var TARGETS_TOP = [];    /* 生僻字池（兼容旧引用） */
+
+  /* 字的三档难度：1 最常用（一二年级那批） 2 进阶（三四年级那批） 3 生僻/课外 */
+  var RANK = {};
+  function rankOf(c) {
+    if (RANK[c]) return RANK[c];
+    RANK[c] = KID[c] ? 1 : (G34[c] ? 2 : 3);
+    return RANK[c];
+  }
+
+  /* 从音节组（如 'a|d'）还原出 s/m/y，还原失败就不用它当木牌目标 */
+  function wordFromKey(key, o) {
+    var parts = key.split('|'), sm = null;
+    for (var i = 0; i < parts.length; i++) {
+      if (SHENGMU.indexOf(parts[i]) >= 0) { sm = parts[i]; break; }
+    }
+    if (!sm) return null;
+    var rest = parts.filter(function (v) { return v !== sm; });
+    if (!rest.length) return null;
+    var w = { s: sm, c: o.c, p: o.p };
+    if (rest.length === 1) {
+      w.y = rest[0];
+    } else if (rest.length === 2) {
+      var m = null, y = null;
+      for (var j = 0; j < rest.length; j++) {
+        if (!m && (rest[j] === 'i' || rest[j] === 'u')) m = rest[j];
+        else if (!y) y = rest[j];
+      }
+      if (!m || !y) return null;
+      w.m = m; w.y = y;
+    } else {
+      return null;
+    }
+    return keyOf(w) === key ? w : null;
+  }
+
+  /* 三档木牌目标池：1 常用 2 进阶 3 生僻（进游戏时构建一次） */
+  var POOL = { 1: [], 2: [], 3: [] };
+  var poolsReady = false;
+
+  function buildPools() {
+    if (poolsReady) return;
+    poolsReady = true;
+    Object.keys(HOMO_ALL).forEach(function (k) {
+      var list = HOMO_ALL[k];
+      var byTone = {};
+      list.forEach(function (o) {
+        var t = toneOf(o.p);
+        (byTone[t] = byTone[t] || []).push(o);
+      });
+      list.forEach(function (o) {
+        /* 出牌要求：这一声里至少还有另一个字可选，不然没得挑 */
+        if ((byTone[toneOf(o.p)] || []).length < 2) return;
+        var w = wordFromKey(k, o);
+        if (!w) return;
+        POOL[rankOf(o.c)].push(w);
+      });
+    });
+    TARGETS = POOL[1].concat(POOL[2], POOL[3]);
+    TARGETS_G34 = POOL[2];
+    TARGETS_TOP = POOL[3];
+  }
+
+  function rebuildTier(level) {
+    /* 不再按年级过滤：任何音节都能出字 */
+    HOMO = HOMO_ALL;
+    buildPools();
+  }
+
+  function pickFromPool(r) {
+    var arr = POOL[r];
+    return (arr && arr.length) ? arr[(Math.random() * arr.length) | 0] : null;
+  }
+
+  /* 按关卡挑木牌目标：1~5 关基本只出最常用的字，6~10 关混进阶字，11 关起生僻字为主 */
+  function pickTarget() {
+    var lv = st.level, roll = Math.random(), r;
+    if (lv <= 5) {
+      r = roll < 0.88 ? 1 : 2;
+    } else if (lv <= 10) {
+      r = roll < 0.45 ? 1 : (roll < 0.88 ? 2 : 3);
+    } else {
+      r = roll < 0.18 ? 1 : (roll < 0.5 ? 2 : 3);
+    }
+    return pickFromPool(r) || pickFromPool(1) || pickFromPool(2) || pickFromPool(3) || weightedPick(TARGETS);
+  }
+
+  /* =====================================================================
+     一·六、声调：拼音的调号决定是哪个字
+     b + an 只说明「这个音」，bān 是班、bàn 是半 —— 调不同，字不同
+     ===================================================================== */
+  var TONE_SETS = ['aāáǎà', 'eēéěè', 'iīíǐì', 'oōóǒò', 'uūúǔù', 'üǖǘǚǜ', 'nńňǹ', 'mḿ'];
+  var TONE_TBL = {}, BARE_TBL = {};
+  TONE_SETS.forEach(function (set) {
+    var base = set.charAt(0);
+    for (var i = 1; i < set.length; i++) {
+      TONE_TBL[set.charAt(i)] = i;      /* 声调符号 → 1/2/3/4 */
+      BARE_TBL[set.charAt(i)] = base;   /* 声调符号 → 原字母 */
+    }
+  });
+  var TONE_NAME = { 1: '一声', 2: '二声', 3: '三声', 4: '四声', 0: '轻声' };
+
+  function toneOf(py) {
+    if (!py) return 0;
+    for (var i = 0; i < py.length; i++) {
+      var t = TONE_TBL[py.charAt(i)];
+      if (t) return t;
+    }
+    return 0;
+  }
+  /* bān → ban：去掉调号，只留字母本体 */
+  function bareOf(py) {
+    var out = '';
+    for (var i = 0; i < py.length; i++) {
+      var ch = py.charAt(i);
+      out += BARE_TBL[ch] || ch;
+    }
+    return out;
+  }
+  /* 同一个音节按声调分组：{1:[],2:[],3:[],4:[],0:[]} */
+  function toneGroups(key) {
+    var g = { 0: [], 1: [], 2: [], 3: [], 4: [] };
+    (HOMO[key] || []).forEach(function (o) { g[toneOf(o.p)].push(o); });
+    return g;
+  }
+
+  /* 木牌目标字池由 rebuildTier(level) 按关卡分档生成，见上文 */
+
+  /* =====================================================================
+     一·六、学习档案（本机账号）
+     ===================================================================== */
+  var PROFILE_KEY = 'pzqb_profile_v1';
+  var PROFILE_KEY_OLD = 'pt_profile_v2';   /* 《拼字奇兵》改名前的老存档，读一次就迁过来 */
+  var prof = { chars: {}, total: 0 };
+
+  function loadProfile() {
+    try {
+      var raw = localStorage.getItem(PROFILE_KEY) || localStorage.getItem(PROFILE_KEY_OLD);
+      if (raw) {
+        var o = JSON.parse(raw);
+        if (o && o.chars && typeof o.chars === 'object') {
+          prof.chars = o.chars;
+          prof.total = o.total || 0;
+          saveProfile();
+        }
+      }
+    } catch (e) { prof = { chars: {}, total: 0 }; }
+  }
+  function saveProfile() {
+    try { localStorage.setItem(PROFILE_KEY, JSON.stringify(prof)); } catch (e) {}
+  }
+  loadProfile();
+
+  function learnedCount() {
+    var n = 0;
+    for (var k in prof.chars) { if (prof.chars[k] && prof.chars[k].n > 0) n++; }
+    return n;
+  }
+
+  function profLevel() {
+    var n = learnedCount();
+    if (n < 8) return 1;
+    if (n < 18) return 2;
+    if (n < 30) return 3;
+    if (n < 45) return 4;
+    return 5;
+  }
+
+  function weightOf(w) {
+    var rec = prof.chars[w.c];
+    var n = rec ? rec.n : 0;
+    var base;
+    if (n === 0) base = 13;
+    else if (n === 1) base = 7;
+    else if (n === 2) base = 4;
+    else if (n === 3) base = 2;
+    else base = 1;
+    if (rec && rec.t && (Date.now() - rec.t) > 180000) base += 3;
+    return base;
+  }
+
+  function weightedPick(list) {
+    var total = 0, i;
+    for (i = 0; i < list.length; i++) total += weightOf(list[i]);
+    if (total <= 0) return list[(Math.random() * list.length) | 0];
+    var r = Math.random() * total;
+    for (i = 0; i < list.length; i++) {
+      r -= weightOf(list[i]);
+      if (r <= 0) return list[i];
+    }
+    return list[list.length - 1];
+  }
+
+  /* 不再限定在基础 161 字里：字库已扩到 1335 字，词表只作字典用 */
+  var VALID_WORDS = WORDS2;
+  var WORD_SET = {};
+  VALID_WORDS.forEach(function (w) { WORD_SET[w] = true; });
+  var IDIOM_SET = {};
+  IDIOMS4.forEach(function (w) { IDIOM_SET[w] = true; });
+
+  /* 组词喂字：char → 能和它组词的伙伴字（营长之路的补给线） */
+  var WORD_PARTNER = {};
+  WORDS2.forEach(function (w) {
+    if (w.length !== 2) return;
+    (WORD_PARTNER[w[0]] = WORD_PARTNER[w[0]] || []).push(w[1]);
+    (WORD_PARTNER[w[1]] = WORD_PARTNER[w[1]] || []).push(w[0]);
+  });
+  var SYL_BY_CHAR = {};
+  function sylEntryFor(c) {
+    var hit = SYL_BY_CHAR[c];
+    if (hit) return hit;
+    for (var i = 0; i < DB.length; i++) {
+      if (DB[i].c === c) { SYL_BY_CHAR[c] = DB[i]; return DB[i]; }
+    }
+    for (var j = 0; j < TARGETS.length; j++) {
+      if (TARGETS[j].c === c) { SYL_BY_CHAR[c] = TARGETS[j]; return TARGETS[j]; }
+    }
+    return null;
+  }
+
+  /* =====================================================================
+     二、工具
+     ===================================================================== */
+  var TAU = Math.PI * 2;
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function pick(a) { return a[(Math.random() * a.length) | 0]; }
+  function shuffle(a) {
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = (Math.random() * (i + 1)) | 0;
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function newId() {
+    return 'k' + (Date.now() % 100000) + '_' + Math.floor(Math.random() * 99999);
+  }
+
+  var canvas = document.getElementById('c');
+  var ctx = canvas.getContext('2d');
+  var wrap = document.getElementById('wrap');
+  var W = 400, H = 800, dpr = 1;
+  var fieldY = 320;      // 地平线
+  var guardX = 80;       // 守护线（城门）
+  var zyX = 42;          // 赵云
+  var foeX = 358;        // 敌将
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    var w = wrap.clientWidth, h = wrap.clientHeight;
+    W = w; H = h;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    fieldY = h * 0.41;
+    guardX = Math.max(64, w * 0.20);
+    zyX = Math.max(34, w * 0.105);
+    foeX = W - zyX;
+    buildPaper();
+  }
+
+  /* 宣纸底纹（缓存） */
+  var paperCanvas = null;
+  function buildPaper() {
+    paperCanvas = document.createElement('canvas');
+    paperCanvas.width = Math.max(1, Math.round(W));
+    paperCanvas.height = Math.max(1, Math.round(H));
+    var pc = paperCanvas.getContext('2d');
+    pc.fillStyle = '#f8f5ec';
+    pc.fillRect(0, 0, W, H);
+    var n = Math.min(1500, (W * H) / 800);
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * 0.05 + 0.008;
+      pc.fillStyle = 'rgba(152,134,102,' + a.toFixed(3) + ')';
+      var rw = Math.random() * 2 + 0.5;
+      pc.fillRect(Math.random() * W, Math.random() * H, rw, rw);
+    }
+    var vg = pc.createRadialGradient(W / 2, H * 0.42, W * 0.32, W / 2, H * 0.42, W * 1.0);
+    vg.addColorStop(0, 'rgba(160,145,115,0)');
+    vg.addColorStop(1, 'rgba(160,145,115,0.11)');
+    pc.fillStyle = vg;
+    pc.fillRect(0, 0, W, H);
+  }
+
+  /* =====================================================================
+     三、音效
+     ===================================================================== */
+  var actx = null;
+  function audioInit() {
+    if (actx) return;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    } catch (e) { actx = null; }
+  }
+  function tone(o) {
+    if (!actx) return;
+    try {
+      var t0 = actx.currentTime + (o.delay || 0);
+      var osc = actx.createOscillator(), g = actx.createGain();
+      osc.type = o.type || 'sine';
+      osc.frequency.setValueAtTime(o.f, t0);
+      if (o.f2) osc.frequency.exponentialRampToValueAtTime(Math.max(o.f2, 1), t0 + o.d);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(o.v || 0.1, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.d);
+      osc.connect(g); g.connect(actx.destination);
+      osc.start(t0); osc.stop(t0 + o.d + 0.03);
+    } catch (e) {}
+  }
+  var SND = {
+    tap: function () { tone({ f: 560, d: 0.05, v: 0.04, type: 'sine' }); },
+    drop: function () { tone({ f: 320, f2: 200, d: 0.08, v: 0.04, type: 'triangle' }); },
+    ok: function (tri) {
+      tone({ f: 620, d: 0.09, v: 0.07, type: 'sine' });
+      tone({ f: 830, d: 0.11, v: 0.06, type: 'sine', delay: 0.07 });
+      if (tri) tone({ f: 1040, d: 0.12, v: 0.05, type: 'sine', delay: 0.15 });
+    },
+    bad: function () { tone({ f: 200, f2: 130, d: 0.18, v: 0.08, type: 'sawtooth' }); },
+    hit: function () { tone({ f: 700, f2: 220, d: 0.13, v: 0.08, type: 'square' }); },
+    general: function () {
+      tone({ f: 392, d: 0.5, v: 0.07, type: 'sawtooth' });
+      tone({ f: 523, d: 0.5, v: 0.06, type: 'sawtooth', delay: 0.08 });
+      tone({ f: 784, d: 0.6, v: 0.05, type: 'triangle', delay: 0.16 });
+    },
+    hurt: function () {
+      tone({ f: 160, f2: 50, d: 0.4, v: 0.12, type: 'sawtooth' });
+    },
+    /* 破关：锣 + 上行四音，给一个明确的"赢了"的听觉落点 */
+    clear: function () {
+      tone({ f: 138, d: 0.6, v: 0.07, type: 'sine' });
+      [523, 659, 784, 1046].forEach(function (f, i) {
+        tone({ f: f, d: 0.2, v: 0.075, type: 'triangle', delay: 0.06 + i * 0.1 });
+      });
+    },
+    /* 连击：音高随连击数往上走 */
+    combo: function (n) {
+      tone({ f: 620 + Math.min(n, 12) * 46, d: 0.08, v: 0.055, type: 'sine' });
+      tone({ f: 930 + Math.min(n, 12) * 56, d: 0.09, v: 0.04, type: 'sine', delay: 0.05 });
+    },
+    lastLife: function () {
+      tone({ f: 246, d: 0.22, v: 0.09, type: 'sawtooth' });
+      tone({ f: 185, d: 0.3, v: 0.085, type: 'sawtooth', delay: 0.2 });
+    },
+    over: function () {
+      [392, 330, 262, 196].forEach(function (f, i) {
+        tone({ f: f, d: 0.24, v: 0.08, type: 'triangle', delay: i * 0.15 });
+      });
+    }
+  };
+
+  /* =====================================================================
+     四、状态
+     ===================================================================== */
+  var MODE = { READY: 0, PLAY: 1, OVER: 2, INTER: 3 };   /* INTER：关卡间战报，等玩家点下一关 */
+  var st = {
+    mode: MODE.READY, t: 0, score: 0, hearts: 3,
+    level: 1, shake: 0, flash: 0, gold: 0,
+    elapsed: 0, kickT: 0, lock: false,
+    playT: 0, lastChar: -1,          /* 只在对战中走的时钟 + 上一次拼出字的时刻（手速测量用） */
+    combo: 0, maxCombo: 0, clearing: false, failT: 0,
+    streak: 0, bestStreak: 0, title: '', levelStart: 0
+  };
+  try { st.title = localStorage.getItem('pzqb_title') || ''; } catch (e) {}
+  try { st.bestStreak = parseInt(localStorage.getItem('pzqb_beststreak') || '0', 10) || 0; } catch (e) {}
+
+  var cards = [];        // 8 格字母卡
+  var pending = [];      // 刚生成、还没落格的卡（会被立刻铺满空位）
+  var dropTimer = 0;
+  var sel = [];          // 选中格子的索引
+  var pendingEnsure = null;  // 选字母期间不能改格子，等选完再补目标字母
+  var chars = [];        // 最近拼出的字
+  var runChars = [];     // 本局拼出的字（结算展示用）
+  var myCells = [null, null, null, null];   // 我方字格
+  var foe = null;        // 敌将
+  var plaques = [];      // 走过来的木牌
+  var shots = [];
+  var clashes = [];      // 中间对撞：我方字 vs 敌将的字
+  var bits = [];
+  var missT = 0;
+  var newLearned = [];
+
+  var best = 0;
+  try {
+    best = parseInt(localStorage.getItem('pzqb_best') || localStorage.getItem('pt_best') || '0', 10) || 0;
+  } catch (e) { best = 0; }
+
+  function activePlaque() { return plaques.length ? plaques[0] : null; }
+  function currentTarget() {
+    var pl = activePlaque();
+    if (pl) return pl.target;
+    if (foe && foe.state === 'spelling' && foe.target) return foe.target;
+    return null;
+  }
+
+  /* =====================================================================
+     五、字母卡生成
+     ===================================================================== */
+  function newWave() {
+    var lv = profLevel();
+    var triRate = lv <= 2 ? 0 : (lv === 3 ? 0.22 : (lv === 4 ? 0.45 : 0.6));
+    /* 关卡越高，三拼占比越高（5 阵起至少四成） */
+    if (st.level >= 5) triRate = Math.max(triRate, 0.4);
+    if (st.level >= 9) triRate = Math.max(triRate, 0.55);
+    var seeds = DB;
+    if (st.level >= 5 && TARGETS.length) {
+      seeds = DB.concat(TARGETS.filter(function (w) { return !CHAR_SET[w.c]; }));
+    }
+    var picks = [];
+    var guard = 0;
+    /* 拼 5 轮之后，字母栏开始随机喂「能和我方字格组词」的字，营长不再是运气 */
+    var feed = runChars.length >= 5 && myCells.some(Boolean);
+    while (picks.length < 2 && guard++ < 80) {
+      if (feed && Math.random() < 0.62) {
+        var fe = wordFeedEntry(picks);
+        if (fe) { picks.push(fe); continue; }
+      }
+      var wantTri = Math.random() < triRate;
+      var pool = seeds.filter(function (w) {
+        if (!!w.m !== wantTri) return false;
+        if (picks.some(function (p) { return p.c === w.c; })) return false;
+        if (picks.some(function (p) { return keyOf(p) === keyOf(w); })) return false;
+        return true;
+      });
+      if (!pool.length) continue;
+      picks.push(weightedPick(pool));
+    }    guard = 0;
+    while (picks.length < 2 && guard++ < 40) {
+      var any = seeds.filter(function (w) {
+        return !picks.some(function (p) { return p.c === w.c || keyOf(p) === keyOf(w); });
+      });
+      if (!any.length) break;
+      picks.push(pick(any));
+    }
+
+    var fresh = [];
+    picks.forEach(function (w) {
+      fresh.push({ v: w.s, kind: 's' });
+      if (w.m) fresh.push({ v: w.m, kind: 'm' });
+      fresh.push({ v: w.y, kind: 'y' });
+    });
+    guard = 0;
+    while (fresh.length < 8 && guard++ < 300) {
+      var useS = Math.random() < 0.45;
+      var v = useS ? pick(SHENGMU) : pick(YUNMU);
+      fresh.push({ v: v, kind: kindOf(v) });
+    }
+    fresh = shuffle(fresh.slice(0, 8));
+    fresh.forEach(function (c) {
+      c.id = newId();
+      pending.push(c);
+    });
+    dropTimer = 0.04;
+
+    var tgt = currentTarget();
+    if (tgt) ensureLetters(tgt);
+  }
+
+  /* 从我方字格出发，找一个能组词、且字母栏还出得来的伙伴字 */
+  function wordFeedEntry(picks) {
+    var have = myCells.filter(Boolean).map(function (c) { return c.ch; });
+    if (!have.length) return null;
+    var cands = [];
+    have.forEach(function (c) {
+      var ps = WORD_PARTNER[c] || [];
+      ps.forEach(function (pc) {
+        if (have.indexOf(pc) >= 0) return;   /* 字格里已经有了，别重喂 */
+        if (picks.some(function (p) { return p.c === pc; })) return;
+        var e = sylEntryFor(pc);
+        if (e) cands.push(e);
+      });
+    });
+    if (!cands.length) return null;
+    return cands[(Math.random() * cands.length) | 0];
+  }
+
+  /* 保证木牌目标字的字母在场：缺哪张就替换掉一张无关卡
+     玩家正在选字母 / 开着选字面板时一律不动格子，记下来等选完再补 */
+  function ensureLetters(w) {
+    if (sel.length || ladderWord) { pendingEnsure = w; return false; }
+    var need = [w.s];
+    if (w.m) need.push(w.m);
+    need.push(w.y);
+    var have = {};
+    cards.forEach(function (c) { if (c) have[c.v] = (have[c.v] || 0) + 1; });
+    pending.forEach(function (c) { have[c.v] = (have[c.v] || 0) + 1; });
+    var missing = need.filter(function (L) { return !have[L]; });
+    if (!missing.length) {
+      /* 已在场：顺手把多余的重复卡清掉，别让格子被同一个字母占满 */
+      return false;
+    }
+    missing.forEach(function (L) {
+      var idx = -1;
+      for (var i = 0; i < pending.length; i++) {
+        if (need.indexOf(pending[i].v) < 0) { idx = i; break; }
+      }
+      if (idx >= 0) {
+        pending[idx] = { v: L, kind: kindOf(L), id: newId() };
+        return;
+      }
+      var cand = [];
+      for (var k = 0; k < 8; k++) {
+        if (cards[k] && sel.indexOf(k) < 0 && need.indexOf(cards[k].v) < 0) cand.push(k);
+      }
+      if (cand.length) {
+        var kk = pick(cand);
+        cards[kk] = { v: L, kind: kindOf(L), id: newId() };
+        renderGrid(false);
+      } else {
+        /* 场上无卡可换：排进待落队列，等空位落下 */
+        pending.push({ v: L, kind: kindOf(L), id: newId() });
+      }
+    });
+    return true;
+  }
+
+  function fullReset() {
+    cards = [null, null, null, null, null, null, null, null];
+    pending = [];
+    dropTimer = 0.04;
+    sel = [];
+    newWave();
+  }
+
+  /* ---------- 节奏档位：默认「慢慢打」，给一二年级留出看清、想清楚的时间 ---------- */
+  var PACE_KEY = 'pzqb_pace';
+  var slowPace = true;
+  try { slowPace = localStorage.getItem(PACE_KEY) !== '0'; } catch (e) { slowPace = true; }
+  /* 时间类参数乘这个数（越大越慢） */
+  function paceT(v) { return slowPace ? v : 1; }
+
+  /* 局内加速 */
+  function accelF() {
+    var byTime = Math.min(st.elapsed / 90, 1);
+    var byChars = Math.min(st.score / 30, 1);
+    /* 封顶：慢速档最多 ×1.25，正常档 ×1.54 —— 后期也不会失控 */
+    var cap = slowPace ? 0.25 : 0.54;
+    return 1 + Math.min(byTime * 0.22 + byChars * 0.32, cap);
+  }
+  function dropInterval() { return 0.42 / accelF(); }
+
+  /* 关卡节奏：1~5 关固定最慢，让孩子先把"看调、拼字母、点字"摸熟；
+     第 6 关起不再按关卡号硬加速，改由玩家自己的手速决定对手强度。 */
+  function levelSpeedMul() {
+    if (st.level <= 5) return 1;
+    /* 长局仍然留一点点爬升，避免高手永远碾压 */
+    var creep = 1 + Math.min(st.level - 5, 10) * 0.012;
+    return matchSpeedMul() * creep;
+  }
+  function levelSpawnMul() { return 1 / levelSpeedMul(); }
+
+  /* ---------- 手速匹配（第 5 关以后生效） ----------
+     记下每次拼出字的时间间隔，换算成 0~1 的"手速值"：
+       0 = 慢慢想的孩子（十几秒一个字）
+       1 = 手很快的孩子（两秒一个字）
+     敌将的出牌间隔、拼字时长、木牌速度都按这个值配，
+     手慢配慢对手、手快配快对手，永远差半步，追得上又不无聊。 */
+  var speedLog = [];       /* 最近 6 次拼字间隔（秒） */
+  var skillVal = -1;       /* 0~1；-1 表示还没测出 */
+
+  function skillNote(sec) {
+    if (!(sec > 0.4) || sec > 30) return;     /* 发呆、切后台、刚开局不算 */
+    speedLog.push(sec);
+    if (speedLog.length > 6) speedLog.shift();
+    if (speedLog.length < 2) return;
+    var sum = 0;
+    for (var i = 0; i < speedLog.length; i++) sum += speedLog[i];
+    var avg = sum / speedLog.length;
+    var r = (14 - avg) / 12.5;                /* 14 秒 → 0，1.5 秒 → 1 */
+    r = Math.min(Math.max(r, 0), 1);
+    /* 平滑：不让一次快/一次慢就把对手抖来抖去 */
+    skillVal = skillVal < 0 ? r : skillVal * 0.72 + r * 0.28;
+  }
+  /* 掉血 = 明显跟不上，对手松一松 */
+  function skillDrop(v) {
+    if (skillVal < 0) skillVal = 0.42;
+    skillVal = Math.min(Math.max(skillVal - v, 0), 1);
+  }
+  function skillNow() { return skillVal < 0 ? 0.5 : skillVal; }
+  /* 木牌/出牌速度倍率：慢手 0.88 → 快手 1.20 */
+  function matchSpeedMul() { return 0.88 + 0.32 * skillNow(); }
+  function matchLabel() {
+    var s = skillNow();
+    if (s >= 0.62) return '对手·咬得紧';
+    if (s >= 0.34) return '对手·正合手';
+    return '对手·放慢了';
+  }
+
+  /* ---------- 补字母：只要空格就立刻补满，绝不等 ---------- */
+  function markDrop(list) {
+    list.forEach(function (i, n) {
+      var cell = gridEl.children[i];
+      if (!cell) return;
+      cell.style.animationDelay = (n * 35) + 'ms';
+      cell.classList.add('drop');
+    });
+  }
+
+  /* 把待落队列一次铺进空位 */
+  function flushPending() {
+    var filled = [];
+    while (pending.length) {
+      var slot = -1;
+      for (var i = 0; i < 8; i++) { if (!cards[i]) { slot = i; break; } }
+      if (slot < 0) break;
+      cards[slot] = pending.shift();
+      filled.push(slot);
+    }
+    return filled;
+  }
+
+  /* 空位直接生一张新卡：尽量补成能拼成音节的字母 */
+  function topUp() {
+    var empties = [];
+    for (var i = 0; i < 8; i++) { if (!cards[i]) empties.push(i); }
+    if (!empties.length) return [];
+
+    /* 组词喂字：拼满 5 轮后，有机会把一整个「能和我方字格组词」的音节铺上桌 */
+    var feedLetters = null;
+    if (runChars.length >= 5 && myCells.some(Boolean) && Math.random() < 0.62) {
+      var fe = wordFeedEntry([]);
+      if (fe) {
+        feedLetters = [fe.s];
+        if (fe.m) feedLetters.push(fe.m);
+        feedLetters.push(fe.y);
+        var onBoard = [];
+        for (var i0 = 0; i0 < 8; i0++) if (cards[i0]) onBoard.push(cards[i0].v);
+        feedLetters = feedLetters.filter(function (x) { return onBoard.indexOf(x) < 0; });
+        /* 空位不够铺下整个音节，或只剩一个字母拼不成，都不浪费 */
+        if (feedLetters.length < 2 || feedLetters.length > empties.length) feedLetters = null;
+      }
+    }
+
+    var feedN = feedLetters ? feedLetters.length : 0;
+    empties.forEach(function (slot, idx) {
+      var v = null;
+      if (idx < feedN) {
+        v = feedLetters[idx];   /* 喂字：按音节顺序铺满空位 */
+      } else
+      /* 七成机会挑一个能跟场上某个字母拼成音节的搭档 */
+      if (Math.random() < 0.7) {
+        var idxs = [];
+        for (var i = 0; i < 8; i++) { if (cards[i]) idxs.push(i); }
+        if (idxs.length) {
+          var base = cards[pick(idxs)].v;
+          var mate = [];
+          DB.forEach(function (w) {
+            var need = [w.s];
+            if (w.m) need.push(w.m);
+            need.push(w.y);
+            if (need.indexOf(base) < 0) return;
+            need.forEach(function (x) { if (x !== base && mate.indexOf(x) < 0) mate.push(x); });
+          });
+          if (mate.length) v = pick(mate);
+        }
+      }
+      if (!v) v = Math.random() < 0.45 ? pick(SHENGMU) : pick(YUNMU);
+      cards[slot] = { v: v, kind: kindOf(v), id: newId() };
+    });
+
+    var tgt = currentTarget();
+    if (tgt) ensureLetters(tgt);
+    return empties;
+  }
+
+  function hasSolution() {
+    var idx = [];
+    for (var i = 0; i < 8; i++) if (cards[i]) idx.push(i);
+    for (var a = 0; a < idx.length; a++) {
+      for (var b = a + 1; b < idx.length; b++) {
+        var k2 = [cards[idx[a]].v, cards[idx[b]].v].sort().join('|');
+        if (KEYMAP[k2] || HOMO[k2]) return true;
+        for (var c = b + 1; c < idx.length; c++) {
+          var k3 = [cards[idx[a]].v, cards[idx[b]].v, cards[idx[c]].v].sort().join('|');
+          if (KEYMAP[k3] || HOMO[k3]) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /* 整盘都拼不出字时，只换掉一张多余卡凑出一个音节，不推倒重来 */
+  function forcePair() {
+    var have = {};
+    for (var i = 0; i < 8; i++) { if (cards[i]) have[cards[i].v] = (have[cards[i].v] || 0) + 1; }
+    var cand = [];
+    DB.forEach(function (w) {
+      var need = [w.s];
+      if (w.m) need.push(w.m);
+      need.push(w.y);
+      var miss = need.filter(function (x) { return !have[x]; });
+      if (miss.length === 1) cand.push(miss[0]);
+    });
+    if (!cand.length) return false;
+    var pool = [];
+    for (var k = 0; k < 8; k++) { if (cards[k] && sel.indexOf(k) < 0) pool.push(k); }
+    if (!pool.length) return false;
+    var slot = pick(pool);
+    var v = pick(cand);
+    cards[slot] = { v: v, kind: kindOf(v), id: newId() };
+    renderGrid(false);
+    markDrop([slot]);
+    return true;
+  }
+
+  function refill() {
+    if (pending.length) return;
+    var tgt = currentTarget();
+    if (tgt) ensureLetters(tgt);
+    if (hasSolution()) return;
+    if (forcePair()) return;
+    var empty = 0;
+    for (var i = 0; i < 8; i++) { if (!cards[i]) empty++; }
+    if (empty >= 4) {
+      tipEl.textContent = '补一批字母';
+      newWave();
+    } else {
+      tipEl.textContent = '这一批拼完了，换一批';
+      setTimeout(function () {
+        if (st.mode === MODE.PLAY) fullReset();
+      }, 420);
+    }
+  }
+
+  /* =====================================================================
+     六、渲染：字母卡 + 双方字格
+     ===================================================================== */
+  var gridEl = document.getElementById('grid');
+  var myGridEl = document.getElementById('myGrid');
+  var foeGridEl = document.getElementById('foeGrid');
+
+  function renderGrid(anim) {
+    gridEl.innerHTML = '';
+    for (var i = 0; i < 8; i++) {
+      var cell = document.createElement('div');
+      cell.className = 'cell';
+      var c = cards[i];
+      if (c) {
+        cell.classList.add(c.kind);
+        if (anim) cell.classList.add('drop');
+        if (c.v.length === 2) cell.classList.add('two');
+        if (c.v.length >= 3) cell.classList.add('three');
+        var lb = document.createElement('span');
+        lb.className = 'lb';
+        lb.textContent = c.v;
+        cell.appendChild(lb);
+        var kx = document.createElement('span');
+        kx.className = 'kx';
+        kx.textContent = c.kind === 's' ? '声' : (c.kind === 'm' ? '介' : '韵');
+        cell.appendChild(kx);
+        if (sel.indexOf(i) >= 0) cell.classList.add('sel');
+        (function (idx) {
+          cell.addEventListener('click', function (e) {
+            e.stopPropagation();
+            onCellTap(idx);
+          });
+        })(i);
+      } else {
+        cell.classList.add('empty');
+        cell.style.opacity = '0.35';
+      }
+      gridEl.appendChild(cell);
+    }
+  }
+
+  function renderMyGrid(popChar) {
+    Array.prototype.forEach.call(myGridEl.querySelectorAll('.fcell'), function (n) { n.remove(); });
+    for (var i = 0; i < 4; i++) {
+      var cell = document.createElement('div');
+      cell.className = 'fcell';
+      var c = myCells[i];
+      if (c) {
+        cell.classList.add('full');
+        if (c === popChar) cell.classList.add('pop');
+        var zh = document.createElement('span');
+        zh.className = 'zh';
+        zh.textContent = c.ch;
+        cell.appendChild(zh);
+        var py = document.createElement('span');
+        py.className = 'py';
+        py.textContent = c.p;
+        cell.appendChild(py);
+      }
+      myGridEl.appendChild(cell);
+    }
+  }
+
+  function renderFoeGrid(popChar) {
+    Array.prototype.forEach.call(foeGridEl.querySelectorAll('.fcell'), function (n) { n.remove(); });
+    var list = foe ? foe.grid : [];
+    for (var i = 0; i < 4; i++) {
+      var cell = document.createElement('div');
+      cell.className = 'fcell';
+      if (list[i]) {
+        cell.classList.add('full');
+        if (list[i] === popChar) cell.classList.add('pop');
+        var zh = document.createElement('span');
+        zh.className = 'zh';
+        zh.textContent = list[i];
+        cell.appendChild(zh);
+      }
+      foeGridEl.appendChild(cell);
+    }
+  }
+
+  /* =====================================================================
+     七、选卡与同音字阶梯
+     ===================================================================== */
+  var pvEl = document.getElementById('pvText');
+  var tipEl = document.getElementById('tip');
+  var ladderEl = document.getElementById('ladder');
+  var lKeyEl = document.getElementById('lKey');
+  var lSubEl = document.getElementById('lSub');
+  var lOptsEl = document.getElementById('lOpts');
+  var lTonesEl = document.getElementById('lTones');
+  var lToneHint = document.getElementById('lToneHint');
+  var ladderWord = null;
+  var ladderCtx = null;
+
+  function showPreview() {
+    if (!sel.length) {
+      pvEl.classList.remove('on');
+      pvEl.innerHTML = '';
+      return;
+    }
+    var vals = sel.map(function (i) { return cards[i].v; });
+    pvEl.innerHTML = vals.join(' <b>+</b> ');
+    pvEl.classList.add('on');
+  }
+
+  function onCellTap(i) {
+    if (st.mode !== MODE.PLAY || st.lock || ladderWord) return;
+    if (!cards[i]) return;
+    var at = sel.indexOf(i);
+    if (at >= 0) {
+      sel.splice(at, 1);
+      renderGrid(false);
+      showPreview();
+      SND.tap();
+      return;
+    }
+    if (sel.length >= 3) sel = [];
+    sel.push(i);
+    SND.tap();
+    renderGrid(false);
+    showPreview();
+    if (sel.length >= 2) trySolve();
+  }
+
+  /* 从选中的字母反推音节结构（声母+介母+韵母），
+     用于主字库没收录、但拼音合法的音节（如 w+a、l+a） */
+  function pseudoWord(vals) {
+    var s = null, m = null, rest = [];
+    vals.forEach(function (v) {
+      if (!s && kindOf(v) === 's') { s = v; } else { rest.push(v); }
+    });
+    if (!s || !rest.length) return null;
+    var y;
+    if (vals.length === 3) {
+      var mi = -1;
+      for (var i = 0; i < rest.length; i++) { if (kindOf(rest[i]) === 'm') { mi = i; break; } }
+      if (mi < 0) return null;
+      m = rest[mi];
+      rest.splice(mi, 1);
+      y = rest[0];
+    } else {
+      y = rest[0];
+    }
+    var parts = [s];
+    if (m) parts.push(m);
+    parts.push(y);
+    var key = parts.sort().join('|');
+    if (!HOMO[key]) return null;
+    var rep = HOMO[key][0];
+    var w = { c: rep.c, p: rep.p, s: s, y: y };
+    if (m) w.m = m;
+    return w;
+  }
+
+  /* 场上（含敌将正在拼的）有没有木牌，正好等着「已选的两个字母 + 再来一个」的三拼 */
+  function waiting3() {
+    if (sel.length !== 2) return false;
+    var list = [];
+    plaques.forEach(function (q) { if (!q.dying) list.push(q.target); });
+    if (foe && foe.state === 'spelling' && foe.target) list.push(foe.target);
+    var a = cards[sel[0]] ? cards[sel[0]].v : null;
+    var b = cards[sel[1]] ? cards[sel[1]].v : null;
+    if (!a || !b) return false;
+    return list.some(function (t) {
+      var need = [t.s, t.m, t.y].filter(Boolean);
+      if (need.length !== 3) return false;
+      var ia = need.indexOf(a), ib = need.indexOf(b);
+      if (ia < 0 || ib < 0) return false;
+      return a !== b || ia !== ib;
+    });
+  }
+
+  function trySolve() {
+    var vals = sel.map(function (i) { return cards[i].v; }).slice().sort();
+    var key = vals.join('|');
+    var w = KEYMAP[key];
+
+    if (w && vals.length === (w.m ? 3 : 2)) {
+      /* 两张字母若只是顺路拼了个别的音，而木牌在等它们的三拼，先别弹面板 */
+      if (vals.length === 2 && !plaqueFor(key) && waiting3()) {
+        tipEl.textContent = '木牌要的是三拼音节 —— 再选一个字母';
+        return;
+      }
+      openLadder(w);
+      return;
+    }
+    /* 主字库没收录、但拼音合法的音节也能拼（任意能组成汉字的拼音） */
+    if (!w && HOMO[key]) {
+      var pw = pseudoWord(vals);
+      if (pw) {
+        if (vals.length === 2 && !plaqueFor(key) && waiting3()) {
+          tipEl.textContent = '木牌要的是三拼音节 —— 再选一个字母';
+          return;
+        }
+        openLadder(pw);
+        return;
+      }
+    }
+    /* 音节合法、但这个档位的字库还没有它的字（如第 1 阵拼 b+in） */
+    if (HOMO_ALL[key] && !HOMO[key]) {
+      /* 不依赖当前档字库，直接按字母类型拼出音节（b + in → bin） */
+      var lsm = null, lmed = null, lfin = null;
+      vals.forEach(function (v) {
+        var kd = kindOf(v);
+        if (!lsm && kd === 's') lsm = v;
+        else if (!lmed && kd === 'm') lmed = v;
+        else if (!lfin) lfin = v;
+      });
+      var syl = lsm ? (lsm + (lmed || '') + (lfin || '')) : '';
+      var need = tierOf(st.level) === 1 ? '后面的关卡' : '第 11 关';
+      tipEl.textContent = (syl ? syl + ' ' : '') + '这个音的字要到' + need + '才出现';
+      SND.tap();
+      /* 把选中的两张牌标一下，再自动松开，别让玩家以为卡住了 */
+      var lockDoms = gridEl.children;
+      sel.forEach(function (i) {
+        if (lockDoms[i]) {
+          lockDoms[i].classList.add('bad');
+          setTimeout(function () { if (lockDoms[i]) lockDoms[i].classList.remove('bad'); }, 520);
+        }
+      });
+      st.lock = true;
+      setTimeout(function () {
+        sel = [];
+        st.lock = false;
+        renderGrid(false);
+        showPreview();
+      }, 560);
+      setTimeout(function () {
+        if (st.mode === MODE.PLAY && !st.lock && !ladderWord) tipEl.textContent = '字母拼出音节 · 声调对上才是那个字';
+      }, 2600);
+      return;
+    }
+    if (sel.length === 3) {
+      st.lock = true;
+      missT = 0.4;
+      SND.bad();
+      var doms = gridEl.children;
+      sel.forEach(function (i) {
+        if (doms[i]) {
+          doms[i].classList.add('bad');
+          setTimeout(function () { if (doms[i]) doms[i].classList.remove('bad'); }, 360);
+        }
+      });
+      setTimeout(function () {
+        sel = [];
+        st.lock = false;
+        renderGrid(false);
+        showPreview();
+      }, 380);
+    } else {
+      tipEl.textContent = '再选一个字母试试（三拼）';
+      setTimeout(function () {
+        if (st.mode === MODE.PLAY && !st.lock && !ladderWord) tipEl.textContent = '字母拼出音节 · 声调对上才是那个字';
+      }, 1200);
+    }
+  }
+
+  /* ---------- 阶梯：先定声调，再出同调字 ---------- */
+  var ladderTone = 1;
+  var ladderPlaque = null;
+
+  /* 场上有好几块木牌时，只要音节对得上就能打，不局限于最前面那块 */
+  function plaqueFor(key) {
+    for (var i = 0; i < plaques.length; i++) {
+      if (!plaques[i].dying && keyOf(plaques[i].target) === key) return plaques[i];
+    }
+    return null;
+  }
+
+  function openLadder(w) {
+    ladderWord = w;
+    var key = keyOf(w);
+    ladderPlaque = plaqueFor(key);
+    ladderCtx = ladderPlaque ? 'plaque' : 'free';
+    var target = ladderPlaque ? ladderPlaque.target : null;
+
+    var parts = [w.s];
+    if (w.m) parts.push(w.m);
+    parts.push(w.y);
+    /* 只显示字母本体，不先替玩家定调 */
+    lKeyEl.innerHTML = parts.join(' + ') + ' → <b>' + bareOf(w.p) + '</b>';
+
+    var groups = toneGroups(key);
+    var toneList = [1, 2, 3, 4, 0].filter(function (t) { return groups[t].length; });
+    var repTone = toneOf(w.p);
+    ladderTone = toneList.indexOf(repTone) >= 0 ? repTone : toneList[0];
+
+    lSubEl.textContent = target
+      ? '木牌要「' + target.c + ' ' + target.p + '」· 调对了字才出来'
+      : '拼出来了 · 先定声调，再挑字';
+    lToneHint.textContent = '';
+
+    lTonesEl.innerHTML = '';
+    toneList.forEach(function (t) {
+      var chip = document.createElement('div');
+      chip.className = 'tChip' + (t === ladderTone ? ' on' : '');
+      chip.setAttribute('data-tone', t);
+      chip.innerHTML = '<span class="tpy">' + groups[t][0].p + '</span><span class="tno">' + TONE_NAME[t] + '</span>';
+      chip.addEventListener('click', function (e) {
+        e.stopPropagation();
+        ladderTone = t;
+        paintToneChips();
+        renderLadderOpts();
+        lToneHint.textContent = '';
+        SND.tap();
+      });
+      lTonesEl.appendChild(chip);
+    });
+
+    renderLadderOpts();
+    ladderEl.classList.add('on');
+    SND.tap();
+  }
+
+  function paintToneChips() {
+    Array.prototype.forEach.call(lTonesEl.children, function (c) {
+      c.classList.toggle('on', Number(c.getAttribute('data-tone')) === ladderTone);
+    });
+  }
+
+  function renderLadderOpts(markRight) {
+    if (!ladderWord) return;
+    var groups = toneGroups(keyOf(ladderWord));
+    var opts = (groups[ladderTone] || []).slice();
+    /* 常用字排前面：先简单的，再生僻的 */
+    opts.sort(function (a, b) { return rankOf(a.c) - rankOf(b.c); });
+    /* 低关卡少给几个选项（都从最简单的里面挑），关卡越高选项越多 */
+    var maxN = st.level <= 5 ? 4 : (st.level <= 10 ? 5 : 6);
+    if (opts.length > maxN) {
+      var tgt0 = (ladderCtx === 'plaque' && ladderPlaque) ? ladderPlaque.target : null;
+      opts = opts.slice(0, maxN);
+      if (tgt0) {
+        var hasT = false;
+        for (var oi = 0; oi < opts.length; oi++) if (opts[oi].c === tgt0.c) { hasT = true; break; }
+        if (!hasT) opts[maxN - 1] = tgt0;
+      }
+    }
+    shuffle(opts);
+    var target = (ladderCtx === 'plaque' && ladderPlaque) ? ladderPlaque.target : null;
+    lOptsEl.innerHTML = '';
+    opts.forEach(function (o) {
+      var b = document.createElement('div');
+      b.className = 'lOpt' + (markRight && target && o.c === target.c ? ' good' : '');
+      b.innerHTML = '<div class="zh">' + o.c + '</div><div class="py">' + o.p + '</div>';
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        onLadderPick(o, b);
+      });
+      lOptsEl.appendChild(b);
+    });
+  }
+
+  function closeLadder() {
+    ladderEl.classList.remove('on');
+    ladderWord = null;
+    ladderCtx = null;
+    ladderPlaque = null;
+    lToneHint.textContent = '';
+  }
+
+  document.getElementById('lCancel').addEventListener('click', function (e) {
+    e.stopPropagation();
+    closeLadder();
+    SND.tap();
+  });
+  ladderEl.addEventListener('click', function (e) {
+    if (e.target === ladderEl) { closeLadder(); }
+  });
+
+  function onLadderPick(o, btn) {
+    if (!ladderWord) return;
+    var pl = ladderPlaque;
+    var target = (ladderCtx === 'plaque' && pl) ? pl.target : null;
+
+    /* 只有打木牌时才指定字：字和调都要对得上 */
+    if (target && o.c !== target.c) {
+      SND.bad();
+      breakCombo();
+      btn.classList.add('bad');
+      st.lock = true;
+      missT = 0.5;
+      pl.spMul = Math.min((pl.spMul || 1) * 1.25, 1.8);
+
+      var wrongTone = toneOf(o.p) !== toneOf(target.p);
+      if (wrongTone) {
+        lToneHint.textContent = o.p + ' 是' + TONE_NAME[toneOf(o.p)] + '，木牌要 ' + target.p + '（' + TONE_NAME[toneOf(target.p)] + '）';
+        tipEl.textContent = '声调不对：' + o.p + ' ≠ ' + target.p;
+      } else {
+        lToneHint.textContent = '调对了，但字不对 —— 木牌上写的是「' + target.c + '」';
+        tipEl.textContent = '声调对了，字选错了';
+      }
+      /* 把玩家引到正确的那一格：切到目标调，标出正确的字 */
+      ladderTone = toneOf(target.p);
+      paintToneChips();
+      renderLadderOpts(true);
+
+      sel = [];
+      renderGrid(false);
+      showPreview();
+      setTimeout(function () {
+        closeLadder();
+        st.lock = false;
+        if (st.mode === MODE.PLAY) tipEl.textContent = '字母拼出音节 · 声调对上才是那个字';
+      }, 1100);
+      return;
+    }
+
+    /* 选对（自由拼字以玩家选的字为准） */
+    var w = ladderWord;
+    var ch = o.c, py = o.p;
+    var isPlaqueHit = !!target;
+    var hitPlaque = isPlaqueHit ? pl : null;
+    closeLadder();
+    SND.ok(!!w.m);
+
+    var used = sel.slice();
+    sel = [];
+    var doms = gridEl.children;
+    used.forEach(function (i) { if (doms[i]) doms[i].classList.add('pop'); });
+
+    /* 学习档案 */
+    var lvBefore = profLevel();
+    var rec = prof.chars[ch];
+    if (!rec || !rec.n) {
+      prof.chars[ch] = { n: 1, t: Date.now() };
+      newLearned.push(ch);
+    } else {
+      rec.n++;
+      rec.t = Date.now();
+    }
+    prof.total++;
+    saveProfile();
+    var lvAfter = profLevel();
+
+    /* 手速采样：从上一次拼出字到现在隔了多久 */
+    if (st.lastChar >= 0) skillNote(st.playT - st.lastChar);
+    st.lastChar = st.playT;
+
+    st.score++;
+    if (runChars.length < 40) runChars.push(ch);
+    hitCombo();
+    popScore();
+
+    setTimeout(function () {
+      used.forEach(function (i) { cards[i] = null; });
+      renderGrid(false);
+      showPreview();
+
+      /* 字落进我方字格 */
+      addMyChar({ c: ch, p: py });
+      renderChars(ch);
+
+      /* 攻击：一脚把字当火苗踢出去。
+         敌将正在拼字时，字直接飞到画面中间跟他的字对撞；否则去烧木牌/敌将 */
+      var mid = !hitPlaque && foe && foe.state === 'spelling' && foe.target;
+      var dmg = 1;
+      st.kickT = 0.36;
+      var sh = {
+        x: zyX + 18, y: fieldY - 28, t: 0, dur: 0.46,
+        ch: ch, dmg: dmg, plaque: hitPlaque,
+        tx: mid ? W / 2 : foeX, ty: mid ? fieldY - 74 : fieldY - 64,
+        foeWord: mid ? foe.target.c : null,
+        done: false, seed: Math.random() * 10
+      };
+      sh.dmg = 1;
+      shots.push(sh);
+      burnBurst(zyX + 24, fieldY - 28);
+      SND.hit();
+
+      updateHud();
+      setTimeout(function () {
+        st.lock = false;
+        if (lvAfter > lvBefore) {
+          st.gold = 0.5;
+          tipEl.textContent = '已学 ' + learnedCount() + ' 字 · 难度加深！';
+          setTimeout(function () {
+            if (st.mode === MODE.PLAY) tipEl.textContent = '字母拼出音节 · 声调对上才是那个字';
+          }, 2000);
+        } else {
+          tipEl.textContent = '字母拼出音节 · 声调对上才是那个字';
+        }
+        refill();
+      }, 300);
+    }, 250);
+  }
+
+  /* =====================================================================
+     八、我方字格与字将
+     ===================================================================== */
+  function addMyChar(w) {
+    var idx = -1;
+    for (var i = 0; i < 4; i++) { if (!myCells[i]) { idx = i; break; } }
+    if (idx < 0) {
+      /* 满了挤掉最旧的 */
+      myCells.shift();
+      myCells.push({ ch: w.c, p: w.p });
+    } else {
+      myCells[idx] = { ch: w.c, p: w.p };
+    }
+    renderMyGrid(w.c);
+
+    /* 军阶判定：四字成语 = 大将军；两字词语 = 营长；单字 = 小兵 */
+    var present = myCells.filter(Boolean);
+    var idiom = findIdiom(present);
+    if (idiom) {
+      fireGeneral(idiom, present.slice(0, 4).map(function (c) { return c.ch; }));
+      return;
+    }
+    for (var a = 0; a < present.length; a++) {
+      for (var b = a + 1; b < present.length; b++) {
+        var w1 = present[a].ch, w2 = present[b].ch;
+        var word = WORD_SET[w1 + w2] ? (w1 + w2) : (WORD_SET[w2 + w1] ? (w2 + w1) : null);
+        if (word) { fireGeneral(word, [w1, w2]); return; }
+      }
+    }
+  }
+
+  /* 四个字任意排列能凑成成语就算（孩子不会按顺序拼） */
+  function findIdiom(cells) {
+    if (cells.length < 4) return null;
+    var cs = cells.slice(0, 4).map(function (c) { return c.ch; });
+    var hit = null;
+    (function perm(arr, cur) {
+      if (hit) return;
+      if (!arr.length) { if (IDIOM_SET[cur]) hit = cur; return; }
+      for (var i = 0; i < arr.length && !hit; i++) {
+        perm(arr.slice(0, i).concat(arr.slice(i + 1)), cur + arr[i]);
+      }
+    })(cs, '');
+    return hit;
+  }
+
+  /* 字将出战：词语=营长（2 伤）、成语=大将军（3 伤，一击定胜负） */
+  function fireGeneral(word, used) {
+    var isIdiom = word.length >= 4;
+    var rank = isIdiom ? '大将军' : '营长';
+    var dmg = isIdiom ? 3 : 2;
+
+    SND.general();
+    st.gold = 0.75;
+    st.shake = Math.max(st.shake, isIdiom ? 0.6 : 0.35);
+
+    var gEl = document.getElementById('general');
+    gEl.querySelector('.gname').textContent = rank;
+    gEl.querySelector('.gword').textContent = word.split('').join(' ');
+    gEl.classList.add('on');
+    setTimeout(function () { gEl.classList.remove('on'); }, 1200);
+
+    /* 烧掉参战的字格 */
+    Array.prototype.forEach.call(myGridEl.querySelectorAll('.fcell'), function (cell) {
+      var zh = cell.querySelector('.zh');
+      if (zh && used.indexOf(zh.textContent) >= 0) cell.classList.add('boom');
+    });
+    setTimeout(function () {
+      myCells = myCells.map(function (c) {
+        return (c && used.indexOf(c.ch) >= 0) ? null : c;
+      });
+      renderMyGrid(null);
+    }, 500);
+
+    /* 清掉所有木牌 */
+    plaques.forEach(function (pl) { burnBurst(pl.x, pl.y + 12); });
+    plaques.length = 0;
+
+    setTimeout(function () {
+      var foeWord = (foe && foe.state === 'spelling' && foe.target) ? foe.target.c : null;
+      generalStrike();
+      /* 中间对撞：敌将当场挨这一下 */
+      clashAt(rank, word, dmg, foeWord);
+      damageFoe(dmg, foeX, fieldY - 60, true);
+      tipEl.textContent = rank + '出阵：' + word + ' · ' + dmg + ' 点伤害';
+    }, 260);
+  }
+
+  /* 中间对撞：我方字从左边撞上去，敌将的字在中间碎掉 */
+  function clashAt(rank, word, dmg, foeWord) {
+    clashes.push({
+      x: W / 2, y: fieldY - 74, word: word, rank: rank, dmg: dmg, foeWord: foeWord || null,
+      t: 0, dur: 0.85, seed: Math.random() * 10
+    });
+    burst(W / 2, fieldY - 74, 26, 'rgba(198,164,104,0.85)');
+    burst(W / 2, fieldY - 74, 14, 'rgba(184,69,58,0.75)');
+  }
+
+  /* 字将出手：烧光木牌、打断敌将拼字、把他往后逼。
+     注意：不给额外伤害 —— 一轮必须老老实实打够 hitsNeeded() 次。 */
+  function generalStrike() {
+    if (!foe || st.mode !== MODE.PLAY) return;
+    foe.hitT = 0.4;
+    st.shake = Math.max(st.shake, 0.5);
+    burnBurst(foeX - 14, fieldY - 58);
+    if (foe.state === 'spelling') {
+      foe.state = 'idle';
+      foe.target = null;
+      foe.idleT = 2.4;
+      tipEl.textContent = '字将出手：打断敌将，木牌全烧了';
+    } else {
+      foe.idleT = Math.max(foe.idleT, 2.4);
+      tipEl.textContent = '字将出手：木牌全烧了';
+    }
+  }
+
+  /* =====================================================================
+     九、敌将与木牌
+     ===================================================================== */
+  /* 双方都是 3 点血：谁先被打满 3 点伤害，谁就倒下。
+     单字（小兵）1 伤 · 词语（营长）2 伤 · 成语（大将军）3 伤 */
+  var HP_MAX = 3;
+  function hitsNeeded() {
+    return HP_MAX;
+  }
+
+  /* =====================================================
+     波次渐进（参照《汉字攻防战》的对战节奏）：
+     每阵分 3 波——开局第 1 波最松，打得越接近胜利越快，
+     但每一波之间都有喘息阀兜底，慢节奏玩家永远追得上。
+     ===================================================== */
+  function foeProgress() {
+    if (!foe || !foe.maxHp) return 0;
+    return Math.min(Math.max((foe.maxHp - foe.hp) / foe.maxHp, 0), 1);
+  }
+  function waveOf() {
+    var p = foeProgress();
+    return p >= 0.72 ? 3 : (p >= 0.36 ? 2 : 1);
+  }
+  /* 出牌间隔系数：第 1 波 ×1.7 → 第 3 波 ×0.85（慢速档） */
+  function spawnRamp(p) {
+    if (slowPace) return 1.7 - 0.85 * p;
+    return 1.35 - 0.45 * p;
+  }
+  /* 木牌速度系数：第 1 波 ×0.8 → 第 3 波 ×1.25 */
+  function speedRamp(p) {
+    return 0.8 + 0.45 * p;
+  }
+
+  /* 喘息阀：场上压着的木牌越多，敌将出手前等得越久 */
+  function alivePlaques() {
+    var n = 0;
+    for (var i = 0; i < plaques.length; i++) if (!plaques[i].dying) n++;
+    return n;
+  }
+
+  function spawnFoe() {
+    var hpBase = hitsNeeded();   /* 单位是「次」，不是点数 */
+    foe = {
+      hp: hpBase, maxHp: hpBase, waveShown: 1,
+      state: 'idle', idleT: 2.2 * paceT(2.4) / levelSpeedMul(), spellT: 0, spellDur: 3.6,
+      target: null, grid: [], surge: 0, hitT: 0, kickT: 0
+    };
+    renderFoeGrid(null);
+  }
+
+  function foeUpdate(dt) {
+    if (!foe) return;
+    if (foe.hitT > 0) foe.hitT -= dt;
+    if (foe.kickT > 0) foe.kickT -= dt;
+    if (foe.deadT > 0) foe.deadT = Math.max(0, foe.deadT - dt);
+    if (foe.fadeT > 0) foe.fadeT = Math.max(0, foe.fadeT - dt);
+    if (foe.state === 'clear') return;   /* 破关演出期间不出牌 */
+    if (foe.state === 'idle') {
+      foe.idleT -= dt;
+      if (foe.idleT <= 0) {
+        foe.target = pickTarget();
+        ensureLetters(foe.target);
+        foe.state = 'spelling';
+        foe.spellT = 0;
+        foe.spellDur = Math.max(2.0, 3.8 - Math.min(st.level, 8) * 0.16) * paceT(1.8) / levelSpeedMul();
+      }
+    } else {
+      foe.spellT += dt * accelF();
+      if (foe.spellT >= foe.spellDur) {
+        spawnPlaque(foe.target);
+        foe.kickT = 0.36;
+        foe.state = 'idle';
+        var mercy = alivePlaques() >= 2 ? 1.9 : 1;
+        foe.idleT = rand(1.6, 2.6) / accelF() * paceT(2.6) * spawnRamp(foeProgress()) * mercy * levelSpawnMul();
+      }
+    }
+  }
+
+  var spawnTotal = 0;   /* 本局累计出牌数（自检用） */
+
+  function spawnPlaque(w) {
+    spawnTotal++;
+    var boss = (st.level % 5 === 0) || foe.surge > 0;
+    if (foe.surge > 0) foe.surge--;
+    var sp = (19 + Math.min(st.level, 10) * 1.5) * (boss ? 0.85 : 1) * paceT(1) * (slowPace ? 0.62 : 1) * speedRamp(foeProgress()) * levelSpeedMul();
+    plaques.push({
+      x: W + 46, y: fieldY - 42, target: w,
+      hp: boss ? 2 : 1, maxHp: boss ? 2 : 1,
+      sp: sp, spMul: 1, seed: Math.random() * 10, boss: boss, hitT: 0, burnT: 0, scorch: 0
+    });
+    foe.grid.push(w.c);
+    renderFoeGrid(w.c);
+    if (foe.grid.length >= 4) {
+      foe.surge = 2;
+      setTimeout(function () {
+        foe.grid = [];
+        renderFoeGrid(null);
+        tipEl.textContent = '敌将凑成了词，下一块是令牌！';
+      }, 700);
+    }
+  }
+
+  function plaquesUpdate(dt) {
+    for (var i = plaques.length - 1; i >= 0; i--) {
+      var pl = plaques[i];
+      if (pl.hitT > 0) pl.hitT -= dt;
+      if (pl.burnT > 0) pl.burnT -= dt;
+
+      /* 被烧毁的木牌：原地烧完再散架 */
+      if (pl.dying) {
+        pl.dieT -= dt;
+        if (Math.random() < dt * 22) burnBurst(pl.x + rand(-14, 14), pl.y + rand(0, 16));
+        if (pl.dieT <= 0) plaques.splice(i, 1);
+        continue;
+      }
+
+      pl.x -= pl.sp * (pl.spMul || 1) * accelF() * dt;
+      if (pl.x <= guardX + 16) {
+        plaques.splice(i, 1);
+        loseHeart(pl.boss ? 2 : 1);   /* 令牌撞城，一次掉 2 点血 */
+        if (st.mode !== MODE.PLAY) return;
+      }
+    }
+  }
+
+  function damageFoe(dmg, x, y, isWord) {
+    if (!foe || st.mode !== MODE.PLAY || st.clearing) return;
+    foe.hp -= dmg;
+    /* 换波：敌将提速前先顿一拍，给孩子一个可感知的节奏点 */
+    var wv = waveOf();
+    if (wv > foe.waveShown) {
+      foe.waveShown = wv;
+      foe.idleT = Math.max(foe.idleT, 2.5);
+      tipEl.textContent = '第 ' + wv + ' 波！敌将变快了，稳住';
+      updateHud();
+    }
+    foe.hitT = 0.28;
+    st.shake = Math.max(st.shake, isWord ? 0.5 : 0.18);
+    burnBurst(x, y);
+    if (isWord) {
+      /* 将领效果：打断敌将拼字，逼他重新起手 */
+      if (foe.state === 'spelling') {
+        foe.state = 'idle';
+        foe.target = null;
+        foe.idleT = 2.0;
+      } else {
+        foe.idleT = Math.max(foe.idleT, 1.6);
+      }
+    }
+    if (foe.hp <= 0) { clearLevel(); return; }
+    /* 伤害落地的瞬间就刷新 HUD 血量：孩子要亲眼看着 3/3 → 2/3 → 1/3 */
+    updateHud();
+    if (foe.hp === 1 && !st.clearing) {
+      banner('敌 将 只 剩 一 点 血', '再拼对一个字就赢', 'win');
+      SND.combo(10);
+    } else if (!isWord) {
+      tipEl.textContent = '打中！敌方还剩 ' + foe.hp + ' 点血';
+    }
+  }
+
+  /* 破一关：先把"赢了"演出来，再开下一阵。
+     演出期间 foe.state='clear'，不出牌、木牌全烧掉，给玩家 1 秒成就感。 */
+  var PRAISE = ['漂亮！', '这关稳了', '守得干净', '打得痛快', '一鼓作气', '阵脚没乱'];
+  function clearLevel() {
+    if (st.clearing || st.mode !== MODE.PLAY) return;
+    st.clearing = true;
+    var lvCleared = st.level;
+    var prevTier = tierOf(lvCleared);
+
+    /* 场上木牌一起烧掉：破关瞬间先清场，别让残牌偷命 */
+    for (var i = 0; i < plaques.length; i++) {
+      var pl = plaques[i];
+      if (!pl.dying) { pl.dying = true; pl.dieT = 0.5; burnBurst(pl.x, pl.y + 10); }
+    }
+
+    foe.hp = 0;
+    foe.state = 'clear';
+    foe.target = null;
+    foe.grid = [];
+    foe.deadT = 0.95;
+    foe.hitT = 0;
+    renderFoeGrid(null);
+
+    st.gold = 1;
+    st.shake = Math.max(st.shake, 0.55);
+    burst(foeX, fieldY - 58, 34, 'rgba(198,164,104,0.8)');
+    burst(foeX, fieldY - 44, 18, 'rgba(184,69,58,0.55)');
+
+    /* 一场胜利 = 一个连胜，满 5 场封"常胜将军" */
+    var streak = lvCleared;
+    st.streak = streak;
+    if (streak > st.bestStreak) {
+      st.bestStreak = streak;
+      try { localStorage.setItem('pzqb_beststreak', String(streak)); } catch (e) {}
+    }
+    var gotTitle = false;
+    if (streak >= 5 && !st.title) {
+      st.title = '常胜将军';
+      gotTitle = true;
+      st.gold = 1;
+      try { localStorage.setItem('pzqb_title', st.title); } catch (e) {}
+    }
+
+    st.level = lvCleared + 1;
+    rebuildTier(st.level);
+
+    var word = PRAISE[(Math.random() * PRAISE.length) | 0];
+    var sub = '连胜 ' + streak + ' 场 · ' + (st.hearts >= 3 ? '无伤' : '还剩 ' + st.hearts + ' 血');
+    banner(gotTitle ? '常 胜 将 军' : '第 ' + streak + ' 关 · 胜',
+      gotTitle ? ('连 胜 五 场 · ' + word) : sub, 'win');
+    SND.clear();
+    if (gotTitle) setTimeout(function () { SND.general(); }, 320);
+    popScore();
+    updateHud();
+
+    setTimeout(function () {
+      st.clearing = false;
+      showClearScreen(lvCleared, gotTitle, prevTier);
+    }, gotTitle ? 1700 : 1150);
+  }
+
+  function nextLevel(prevTier) {
+    if (!foe || st.mode !== MODE.PLAY) return;
+    st.levelStart = runChars.length;
+    foe.hp = hitsNeeded();
+    foe.maxHp = foe.hp;
+    foe.grid = [];
+    foe.surge = 0;
+    foe.state = 'idle';
+    foe.idleT = 2.2 * paceT(1.4);
+    foe.waveShown = 1;
+    foe.deadT = 0;
+    foe.fadeT = 0.5;
+    renderFoeGrid(null);
+    var newTier = tierOf(st.level);
+    if (st.level === 6) {
+      tipEl.textContent = '第 6 关！之后对手照你的手速配：' + matchLabel().replace('对手·', '');
+    } else if (newTier !== prevTier) {
+      tipEl.textContent = newTier === 2
+        ? '第 ' + st.level + ' 关！字开始变难了'
+        : '第 ' + st.level + ' 关！生僻字登场了';
+    } else {
+      tipEl.textContent = '第 ' + st.level + ' 关！敌将重整旗鼓';
+    }
+    updateHud();
+  }
+
+  /* 掉血：疼一下，说清楚还剩几点。最后一点血有专门的提醒。 */
+  function loseHeart(dmg) {
+    if (!dmg) dmg = 1;
+    st.hearts -= dmg;
+    if (st.hearts < 0) st.hearts = 0;
+    st.shake = 0.62;
+    st.flash = 0.5;
+    breakCombo();
+    /* 掉血说明真的跟不上：对手松一档，并从这一刻重新计手速 */
+    skillDrop(dmg > 1 ? 0.14 : 0.08);
+    st.lastChar = -1;
+    burst(guardX, fieldY - 34, 22, 'rgba(184,69,58,0.62)');
+    updateHud();
+
+    if (st.hearts <= 0) {
+      st.lock = true;
+      st.failT = 1.05;
+      closeLadder();
+      banner('守 城 失 守', '小将倒下了 · 这一局结束', 'bad');
+      SND.hurt();
+      return;
+    }
+
+    SND.hurt();
+    if (st.hearts === 1) {
+      setTimeout(function () { if (st.mode === MODE.PLAY) SND.lastLife(); }, 180);
+      banner('最 后 一 点 血', '木牌上写什么，看清再拼', 'bad');
+    } else {
+      banner(dmg > 1 ? '令 牌 撞 城' : '木 牌 进 城', '还剩 ' + st.hearts + ' 点血', 'bad');
+    }
+    if (foe) foe.idleT = Math.max(foe.idleT, 3.5 * paceT(2));
+    tipEl.textContent = '木牌进城了！守住下一块';
+  }
+
+  function burst(x, y, n, color) {
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * TAU, sp = rand(40, 200);
+      bits.push({
+        x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 50,
+        r: rand(1.2, 3.2), life: rand(0.3, 0.65), max: 0.65, c: color
+      });
+    }
+  }
+
+  /* =====================================================================
+     十、HUD
+     ===================================================================== */
+  var heartsEl = document.getElementById('hearts');
+  var scoreEl = document.getElementById('score');
+  var metaEl = document.getElementById('meta');
+  var titleEl = document.getElementById('titleTag');
+  var matchTagEl = document.getElementById('matchTag');
+  var charlistEl = document.getElementById('charlist');
+  var HEART_SVG = '<svg class="heart" viewBox="0 0 24 22"><path d="M12 21s-9-5.7-9-12A5 5 0 0 1 12 6a5 5 0 0 1 9 3c0 6.3-9 12-9 12z" fill="#b8453a"/></svg>';
+
+  function updateHud() {
+    var h = '';
+    for (var i = 0; i < 3; i++) {
+      h += HEART_SVG.replace('class="heart"', 'class="heart' + (i < st.hearts ? '' : ' gone') + '"');
+    }
+    heartsEl.innerHTML = h;
+    scoreEl.textContent = st.score;
+    if (st.clearing) {
+      metaEl.textContent = '破 关 · 下一阵';
+    } else if (st.mode === MODE.INTER) {
+      metaEl.textContent = '第 ' + st.level + ' 关 · 等 候 出 战';
+    } else if (foe) {
+      metaEl.textContent = '第 ' + st.level + ' 关 · 敌将 ' + Math.max(0, foe.hp) + '/' + foe.maxHp +
+        ' · 第' + waveOf() + '波';
+    } else {
+      metaEl.textContent = '第 ' + st.level + ' 关';
+    }
+    /* 第 5 关以后，左下角告诉玩家：对手是照你的手速配的 */
+    var showMatch = st.level > 5 && st.mode === MODE.PLAY && !st.clearing && speedLog.length >= 2;
+    if (showMatch) {
+      matchTagEl.textContent = matchLabel();
+      matchTagEl.classList.add('on');
+      matchTagEl.classList.toggle('hot', skillNow() >= 0.62);
+    } else {
+      matchTagEl.classList.remove('on');
+      matchTagEl.classList.remove('hot');
+    }
+    wrap.classList.toggle('lowlife', st.hearts === 1 && st.mode === MODE.PLAY);
+    if (st.title) {
+      titleEl.textContent = st.title;
+      titleEl.classList.add('on');
+    } else if (st.streak >= 2) {
+      titleEl.textContent = '连 胜 ' + st.streak + ' 场';
+      titleEl.classList.add('on');
+    } else {
+      titleEl.classList.remove('on');
+    }
+  }
+
+  /* =====================================================================
+     十·五、情绪层：横幅、连击、得分跳动
+     孩子看得懂输赢，全靠这层：破关要有锣、掉命要有疼、连中要有夸奖。
+     ===================================================================== */
+  var bannerEl = document.getElementById('banner');
+  var bannerMain = bannerEl.querySelector('.bMain');
+  var bannerSub = bannerEl.querySelector('.bSub');
+  var bannerT = null;
+  function banner(main, sub, kind) {
+    bannerEl.className = kind || '';
+    bannerMain.textContent = main;
+    bannerSub.textContent = sub || '';
+    bannerSub.style.display = sub ? 'block' : 'none';
+    /* 重启动画：同一句连喊两次也能再弹一下 */
+    bannerMain.style.animation = 'none';
+    void bannerMain.offsetWidth;
+    bannerMain.style.animation = '';
+    bannerEl.classList.add('on');
+    clearTimeout(bannerT);
+    bannerT = setTimeout(function () { bannerEl.classList.remove('on'); }, kind === 'win' ? 1080 : 920);
+  }
+
+  var comboEl = document.getElementById('comboTag');
+  function paintCombo() {
+    if (st.combo >= 2) {
+      comboEl.innerHTML = '连 中 ×<b>' + st.combo + '</b>';
+      comboEl.classList.add('on');
+      comboEl.classList.remove('pop');
+      void comboEl.offsetWidth;
+      comboEl.classList.add('pop');
+    } else {
+      comboEl.classList.remove('on');
+    }
+  }
+  var COMBO_WORDS = {
+    3: '手感来了', 5: '连中五个，稳住', 8: '八连！敌将慌了',
+    12: '十二连，这谁拦得住', 16: '老将附体', 20: '二十连！木牌不够烧'
+  };
+  function hitCombo() {
+    st.combo++;
+    if (st.combo > st.maxCombo) st.maxCombo = st.combo;
+    paintCombo();
+    if (st.combo >= 2) SND.combo(st.combo);
+    if (COMBO_WORDS[st.combo] && !st.clearing && st.failT <= 0) {
+      banner(COMBO_WORDS[st.combo], '连 中 ×' + st.combo, 'win');
+    }
+  }
+  function breakCombo() {
+    st.combo = 0;
+    paintCombo();
+  }
+
+  function popScore() {
+    scoreEl.classList.remove('pop');
+    void scoreEl.offsetWidth;
+    scoreEl.classList.add('pop');
+  }
+
+  function renderChars(newChar) {
+    chars.push(newChar);
+    if (chars.length > 6) chars.shift();
+    charlistEl.innerHTML = '';
+    chars.forEach(function (c) {
+      var d = document.createElement('div');
+      d.className = 'chip' + (c === newChar ? ' new' : '');
+      d.textContent = c;
+      charlistEl.appendChild(d);
+    });
+  }
+
+  /* =====================================================================
+     十一、主循环
+     ===================================================================== */
+  function update(dt) {
+    st.t += dt;
+    if (st.shake > 0) st.shake = Math.max(0, st.shake - dt * 1.8);
+    if (st.flash > 0) st.flash = Math.max(0, st.flash - dt * 2.2);
+    if (st.gold > 0) st.gold = Math.max(0, st.gold - dt * 1.6);
+    if (missT > 0) missT -= dt;
+    if (st.kickT > 0) st.kickT -= dt;
+
+    for (var i = bits.length - 1; i >= 0; i--) {
+      var b = bits[i];
+      b.life -= dt;
+      if (b.life <= 0) { bits.splice(i, 1); continue; }
+      b.x += b.vx * dt; b.y += b.vy * dt; b.vy += 520 * dt;
+    }
+
+    for (var ci = clashes.length - 1; ci >= 0; ci--) {
+      clashes[ci].t += dt;
+      if (clashes[ci].t >= clashes[ci].dur) clashes.splice(ci, 1);
+    }
+
+    for (var s = shots.length - 1; s >= 0; s--) {
+      var sh = shots[s];
+      sh.t += dt;
+      if (sh.plaque && plaques.indexOf(sh.plaque) >= 0) {
+        sh.tx = sh.plaque.x;
+        sh.ty = sh.plaque.y - 26;
+      }
+      if (sh.t >= sh.dur && !sh.done) {
+        sh.done = true;
+        if (sh.plaque && plaques.indexOf(sh.plaque) >= 0) {
+          var pl = sh.plaque;
+          pl.hp--;
+          pl.hitT = 0.3;
+          pl.burnT = 0.9;
+          pl.scorch = (pl.scorch || 0) + 1;
+          burnBurst(pl.x, pl.y + 16);
+          if (pl.hp <= 0) {
+            /* 烧毁：原地烧 0.75 秒再散架 */
+            pl.dying = true;
+            pl.dieT = 0.75;
+            burnBurst(pl.x, pl.y + 10);
+            damageFoe(1, pl.x, pl.y - 26, false);
+          } else {
+            damageFoe(1, pl.x, pl.y - 26, false);
+            tipEl.textContent = '令牌烧裂了，再烧一次！';
+          }
+        } else {
+          burnBurst(sh.tx, sh.ty);
+          if (sh.foeWord) clashAt('小兵', sh.ch, 1, sh.foeWord);
+          damageFoe(1, sh.tx, sh.ty, false);
+        }
+        shots.splice(s, 1);
+      }
+    }
+
+    /* 失守定格：让玩家看清最后一块木牌怎么破的，再进结算 */
+    if (st.failT > 0) {
+      st.failT -= dt;
+      if (st.failT <= 0) { st.failT = 0; gameOver(); }
+      return;
+    }
+
+    if (st.mode !== MODE.PLAY) return;
+
+    st.elapsed += dt;
+    if (!st.clearing) st.playT += dt;   /* 手速时钟：破关演出、战报屏都不走 */
+
+    /* 字母栏：有空格就立刻补满。
+       玩家正在选字母（sel 非空）或开着选字面板时，格子一律不动。 */
+    if (!st.lock && !ladderWord && !sel.length) {
+      var grew;
+      if (pending.length) {
+        grew = flushPending();
+      } else {
+        grew = topUp();
+      }
+      if (grew.length) {
+        renderGrid(false);
+        markDrop(grew);
+        SND.drop();
+      }
+      /* 选字母期间压下来的目标字母，现在补 */
+      if (pendingEnsure) {
+        var pw = pendingEnsure;
+        pendingEnsure = null;
+        if (ensureLetters(pw)) renderGrid(false);
+      }
+      if (grew.length && !hasSolution()) refill();
+    }
+
+    foeUpdate(dt);
+    plaquesUpdate(dt);
+  }
+
+  /* =====================================================================
+     十二、绘制
+     ===================================================================== */
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (paperCanvas) ctx.drawImage(paperCanvas, 0, 0, W, H);
+    else { ctx.fillStyle = '#f8f5ec'; ctx.fillRect(0, 0, W, H); }
+
+    var sx = 0, sy = 0;
+    if (st.shake > 0) {
+      var m = st.shake * 11;
+      sx = rand(-m, m); sy = rand(-m, m);
+    }
+    ctx.save();
+    ctx.translate(sx, sy);
+
+    drawSky();
+    drawMountains();
+    drawGround();
+    drawGate();
+    drawZhaoyun();
+    drawFoeGeneral();
+    drawPlaques();
+    drawShots();
+    drawClashes();
+    drawBits();
+
+    ctx.restore();
+
+    if (st.gold > 0) {
+      ctx.fillStyle = 'rgba(198,164,104,' + (st.gold * 0.20).toFixed(3) + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+    if (st.flash > 0) {
+      ctx.fillStyle = 'rgba(184,69,58,' + (st.flash * 0.20).toFixed(3) + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function drawSky() {
+    var mx = W * 0.79, my = fieldY * 0.30, mr = Math.min(20, W * 0.048);
+    var halo = ctx.createRadialGradient(mx, my, mr * 0.4, mx, my, mr * 4.2);
+    halo.addColorStop(0, 'rgba(198,118,92,0.18)');
+    halo.addColorStop(0.5, 'rgba(198,118,92,0.06)');
+    halo.addColorStop(1, 'rgba(198,118,92,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(mx, my, mr * 4.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(196,110,86,0.26)';
+    ctx.beginPath(); ctx.arc(mx, my, mr, 0, TAU); ctx.fill();
+
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(120,130,132,0.15)';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.13, fieldY * 0.27);
+    ctx.quadraticCurveTo(W * 0.22, fieldY * 0.21, W * 0.32, fieldY * 0.26);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(120,130,132,0.10)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.40, fieldY * 0.40);
+    ctx.quadraticCurveTo(W * 0.47, fieldY * 0.35, W * 0.57, fieldY * 0.39);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  function drawMountains() {
+    ctx.fillStyle = 'rgba(96,112,118,0.11)';
+    ctx.beginPath();
+    ctx.moveTo(0, fieldY);
+    ctx.bezierCurveTo(W * 0.10, fieldY * 0.66, W * 0.20, fieldY * 0.40, W * 0.33, fieldY * 0.43);
+    ctx.bezierCurveTo(W * 0.45, fieldY * 0.46, W * 0.50, fieldY * 0.72, W * 0.63, fieldY * 0.74);
+    ctx.bezierCurveTo(W * 0.75, fieldY * 0.76, W * 0.81, fieldY * 0.50, W * 0.93, fieldY * 0.53);
+    ctx.lineTo(W, fieldY * 0.56);
+    ctx.lineTo(W, fieldY);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(78,94,102,0.14)';
+    ctx.beginPath();
+    ctx.moveTo(0, fieldY);
+    ctx.bezierCurveTo(W * 0.07, fieldY * 0.82, W * 0.15, fieldY * 0.67, W * 0.25, fieldY * 0.69);
+    ctx.bezierCurveTo(W * 0.37, fieldY * 0.71, W * 0.43, fieldY * 0.92, W * 0.55, fieldY * 0.93);
+    ctx.bezierCurveTo(W * 0.67, fieldY * 0.94, W * 0.76, fieldY * 0.76, W * 0.88, fieldY * 0.78);
+    ctx.lineTo(W, fieldY * 0.82);
+    ctx.lineTo(W, fieldY);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(78,88,94,0.22)';
+    ctx.lineWidth = 1.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(W * 0.12, fieldY * 0.78);
+    ctx.quadraticCurveTo(W * 0.24, fieldY * 0.50, W * 0.38, fieldY * 0.60);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  function drawGround() {
+    var g = ctx.createLinearGradient(0, fieldY, 0, H * 0.47);
+    g.addColorStop(0, 'rgba(120,132,128,0.15)');
+    g.addColorStop(0.5, 'rgba(120,132,128,0.05)');
+    g.addColorStop(1, 'rgba(120,132,128,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, fieldY, W, H * 0.47 - fieldY);
+
+    ctx.strokeStyle = 'rgba(74,84,88,0.38)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(0, fieldY);
+    ctx.lineTo(W, fieldY);
+    ctx.stroke();
+  }
+
+  function drawGate() {
+    var ink = 'rgba(60,68,72,0.55)';
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(guardX - 18, fieldY);
+    ctx.lineTo(guardX - 18, fieldY - 76);
+    ctx.moveTo(guardX + 8, fieldY);
+    ctx.lineTo(guardX + 8, fieldY - 76);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(guardX - 26, fieldY - 76);
+    ctx.lineTo(guardX + 16, fieldY - 76);
+    ctx.stroke();
+
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(guardX - 30, fieldY - 82);
+    ctx.lineTo(guardX - 18, fieldY - 76);
+    ctx.moveTo(guardX + 20, fieldY - 82);
+    ctx.lineTo(guardX + 8, fieldY - 76);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    ctx.fillStyle = 'rgba(184,69,58,0.6)';
+    ctx.beginPath(); ctx.arc(guardX - 5, fieldY - 62, 4.2, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(60,68,72,0.3)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(guardX - 5, fieldY - 76);
+    ctx.lineTo(guardX - 5, fieldY - 66);
+    ctx.stroke();
+
+    var pulse = 0.09 + 0.06 * Math.abs(Math.sin(st.t * 2.2));
+    var lg = ctx.createLinearGradient(guardX - 10, 0, guardX + 22, 0);
+    lg.addColorStop(0, 'rgba(90,120,130,0)');
+    lg.addColorStop(0.5, 'rgba(90,120,130,' + pulse.toFixed(2) + ')');
+    lg.addColorStop(1, 'rgba(90,120,130,0)');
+    ctx.fillStyle = lg;
+    ctx.fillRect(guardX - 10, fieldY - 82, 34, 82);
+  }
+
+  /* 火柴人：一根墨线勾身子，四点画完四肢。
+     pal.ink 主墨色，pal.accent 朱砂点缀（红缨 / 腰带）
+     kick 0~1：踢出火苗时抬腿的幅度 */
+  function drawWarrior(pal, kick) {
+    var ink = pal.ink;
+    var acc = pal.accent;
+    var k = clamp(kick || 0, 0, 1);
+    var sway = Math.sin(st.t * 2.1) * 1.1;
+
+    /* 脚下淡影 */
+    ctx.fillStyle = 'rgba(96,106,108,0.10)';
+    ctx.beginPath(); ctx.ellipse(0, 1, 16, 3.4, 0, 0, TAU); ctx.fill();
+
+    ctx.save();
+    ctx.rotate(-0.10 * k);           /* 抬腿时身子后仰 */
+
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    var hipY = -31;
+    var neckY = -51 + sway * 0.3;
+    var headY = -60 + sway * 0.5;
+
+    /* 躯干一根线 */
+    ctx.beginPath();
+    ctx.moveTo(0, hipY);
+    ctx.lineTo(0, neckY);
+    ctx.stroke();
+
+    /* 头：一圈 */
+    ctx.beginPath();
+    ctx.arc(0, headY, 8.2, 0, TAU);
+    ctx.stroke();
+
+    /* 眼睛一点 */
+    ctx.fillStyle = ink;
+    ctx.beginPath(); ctx.arc(3.4, headY - 1, 1.1, 0, TAU); ctx.fill();
+
+    /* 红缨：两根短线随风摆 */
+    ctx.strokeStyle = acc;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(-6.2, headY - 4.5);
+    ctx.quadraticCurveTo(-13, headY - 9 + sway, -17.5, headY - 3 + sway * 1.6);
+    ctx.stroke();
+
+    /* 腰带 */
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(-5.5, hipY + 3);
+    ctx.lineTo(5.5, hipY + 3);
+    ctx.stroke();
+
+    /* 手臂：前手随踢腿向后甩 */
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 2.1;
+    var shoulderY = neckY + 3;
+    ctx.beginPath();
+    ctx.moveTo(0, shoulderY);
+    ctx.quadraticCurveTo(7, shoulderY + 6, 13 - 6 * k, hipY - 2 - 10 * k);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, shoulderY);
+    ctx.quadraticCurveTo(-7, shoulderY + 7, -12 - 5 * k, hipY - 1 + 6 * k);
+    ctx.stroke();
+
+    /* 支撑腿 */
+    ctx.beginPath();
+    ctx.moveTo(0, hipY);
+    ctx.quadraticCurveTo(-3, hipY + 17, -7, -1);
+    ctx.stroke();
+
+    /* 踢出的那条腿：抬到接近水平 */
+    var fx = 9 + 19 * k;
+    var fy = -1 - 27 * k;
+    ctx.beginPath();
+    ctx.moveTo(0, hipY);
+    ctx.quadraticCurveTo(5 + 8 * k, hipY + 15 - 4 * k, fx, fy);
+    ctx.stroke();
+
+    /* 脚掌 */
+    if (k > 0.15) {
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(fx - 2, fy);
+      ctx.lineTo(fx + 5, fy - 1);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+    ctx.lineCap = 'butt';
+  }
+
+  /* 踢腿幅度：0.36 秒内起落一次 */
+  function kickAmp(t) {
+    if (!t || t <= 0) return 0;
+    var p = 1 - t / 0.36;
+    return Math.sin(Math.PI * clamp(p, 0, 1));
+  }
+
+  /* 一朵火苗：外焰朱砂，内焰暖橙，随时间抖 */
+  function drawFlame(x, y, h, w, alpha, seed) {
+    var t = st.t * 8.5 + (seed || 0);
+    var sway = Math.sin(t) * 0.16;
+    var flick = 0.88 + 0.12 * Math.sin(t * 1.9 + 1.3);
+    var hh = h * flick;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    ctx.rotate(sway * 0.5);
+
+    var g = ctx.createRadialGradient(0, hh * 0.22, 1, 0, hh * 0.18, hh * 0.95);
+    g.addColorStop(0, 'rgba(240,164,80,0.95)');
+    g.addColorStop(0.45, 'rgba(205,92,52,0.82)');
+    g.addColorStop(1, 'rgba(184,69,58,0)');
+    ctx.fillStyle = g;
+
+    ctx.beginPath();
+    ctx.moveTo(-w, hh * 0.42);
+    ctx.quadraticCurveTo(-w * 1.5, -hh * 0.28, 0, -hh);
+    ctx.quadraticCurveTo(w * 1.5, -hh * 0.28, w, hh * 0.42);
+    ctx.quadraticCurveTo(0, hh * 0.92, -w, hh * 0.42);
+    ctx.closePath();
+    ctx.fill();
+
+    /* 内焰 */
+    ctx.fillStyle = 'rgba(252,228,172,0.85)';
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.45, hh * 0.32);
+    ctx.quadraticCurveTo(-w * 0.6, -hh * 0.1, 0, -hh * 0.62);
+    ctx.quadraticCurveTo(w * 0.6, -hh * 0.1, w * 0.45, hh * 0.32);
+    ctx.quadraticCurveTo(0, hh * 0.68, -w * 0.45, hh * 0.32);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  /* 烧到木牌：火星往上窜 */
+  function burnBurst(x, y) {
+    for (var i = 0; i < 14; i++) {
+      var a = -Math.PI / 2 + rand(-1.1, 1.1);
+      var sp = rand(50, 170);
+      bits.push({
+        x: x + rand(-12, 12), y: y + rand(-6, 8),
+        vx: Math.cos(a) * sp * 0.55, vy: Math.sin(a) * sp,
+        r: rand(1.4, 3.4), life: rand(0.35, 0.8), max: 0.8,
+        c: Math.random() < 0.5 ? 'rgba(238,158,74,0.9)' : 'rgba(205,92,52,0.85)'
+      });
+    }
+  }
+
+  function drawZhaoyun() {
+    var x = zyX, y = fieldY - 2;
+    var br = Math.sin(st.t * 1.7) * 1.0;
+    ctx.save();
+    ctx.translate(x, y + br);
+    drawWarrior({
+      ink: 'rgba(52,58,62,0.86)',
+      accent: 'rgba(184,69,58,0.92)'
+    }, kickAmp(st.kickT));
+    ctx.restore();
+  }
+
+  function drawFoeGeneral() {
+    if (!foe) return;
+    var x = foeX, y = fieldY - 2;
+    var br = Math.sin(st.t * 1.5 + 1) * 1.0;
+    /* 破关时淡出、微微后仰；新一关从半透明淡入 */
+    var a = 1;
+    if (foe.deadT > 0) a = clamp(foe.deadT / 0.95, 0, 1);
+    else if (foe.fadeT > 0) a = 1 - clamp(foe.fadeT / 0.5, 0, 1) * 0.55;
+    if (foe.hitT > 0) x += Math.sin(st.t * 62) * 2.6;
+    ctx.globalAlpha = a;
+    ctx.save();
+    ctx.translate(x, y + br);
+    ctx.rotate((1 - a) * -0.16);
+    ctx.scale(-1, 1);   /* 镜像：面朝左 */
+    drawWarrior({
+      ink: 'rgba(58,62,66,0.9)',
+      accent: 'rgba(110,114,120,0.9)'
+    }, kickAmp(foe.kickT));
+    ctx.restore();
+
+    /* 敌将血条 */
+    var bw = Math.min(70, W * 0.2), bh = 4;
+    var bx = x - bw / 2, by = y - 96;
+    ctx.fillStyle = 'rgba(80,90,94,0.16)';
+    ctx.fillRect(bx, by, bw, bh);
+    var ratio = clamp(foe.hp / foe.maxHp, 0, 1);
+    ctx.fillStyle = ratio > 0.5 ? 'rgba(88,126,96,0.75)'
+      : (ratio > 0.22 ? 'rgba(186,148,68,0.8)' : 'rgba(184,69,58,0.85)');
+    ctx.fillRect(bx, by, bw * ratio, bh);
+
+    /* 拼字过程：字母逐个亮起 */
+    if (foe.state === 'spelling' && foe.target) {
+      var letters = [foe.target.s];
+      if (foe.target.m) letters.push(foe.target.m);
+      letters.push(foe.target.y);
+      var prog = clamp(foe.spellT / foe.spellDur, 0, 1);
+      var shown = Math.min(letters.length, Math.floor(prog * letters.length) + 1);
+      var txt = '';
+      for (var i = 0; i < letters.length; i++) {
+        txt += (i < shown ? letters[i] : '？');
+        if (i < letters.length - 1) txt += ' · ';
+      }
+      ctx.font = '600 13px -apple-system,"PingFang SC",serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(184,69,58,0.8)';
+      ctx.fillText(txt, x, y - 110);
+      /* 进度细线 */
+      ctx.strokeStyle = 'rgba(184,69,58,0.35)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x - 26, y - 102);
+      ctx.lineTo(x - 26 + 52 * prog, y - 102);
+      ctx.stroke();
+    } else {
+      ctx.font = '10px -apple-system,"PingFang SC",serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(90,94,100,0.55)';
+      ctx.fillText('敌 将', x, y - 108);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawPlaques() {
+    for (var i = 0; i < plaques.length; i++) {
+      var pl = plaques[i];
+      var bob = Math.sin(st.t * 4 + pl.seed) * 2.4;
+      var x = pl.x, y = pl.y + bob;
+      var flash = pl.hitT > 0 && Math.floor(st.t * 30) % 2 === 0;
+      if (pl.dying) ctx.globalAlpha = clamp(pl.dieT / 0.75, 0, 1);
+
+      ctx.fillStyle = 'rgba(96,106,108,0.10)';
+      ctx.beginPath(); ctx.ellipse(x, pl.y + 34, 17, 3.6, 0, 0, TAU); ctx.fill();
+
+      /* 挂绳 */
+      ctx.strokeStyle = 'rgba(90,94,100,0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 30);
+      ctx.lineTo(x, y - 40);
+      ctx.stroke();
+
+      /* 木牌 */
+      ctx.save();
+      ctx.translate(x, y);
+      if (pl.boss) ctx.rotate(Math.sin(st.t * 2.4 + pl.seed) * 0.05);
+      ctx.fillStyle = flash ? '#f3d9cf' : '#f3ead8';
+      ctx.strokeStyle = pl.boss ? 'rgba(184,69,58,0.8)' : 'rgba(90,94,100,0.75)';
+      ctx.lineWidth = 1.5;
+      var w = pl.boss ? 50 : 44, h = pl.boss ? 60 : 54;
+      roundRect(-w / 2, -h / 2 - 4, w, h, 8);
+      ctx.fill(); ctx.stroke();
+
+      /* 每被烧一次，底部多一块焦痕 */
+      var scorch = pl.scorch || 0;
+      if (scorch > 0) {
+        ctx.save();
+        roundRect(-w / 2, -h / 2 - 4, w, h, 8);
+        ctx.clip();
+        ctx.globalAlpha = Math.min(0.5, 0.2 * scorch);
+        ctx.fillStyle = 'rgba(62,46,38,0.9)';
+        for (var sc = 0; sc < scorch; sc++) {
+          var scx = -w * 0.26 + (sc % 3) * w * 0.26;
+          ctx.beginPath();
+          ctx.ellipse(scx, h / 2 - 5, w * 0.27, 9 + sc * 1.4, 0, 0, TAU);
+          ctx.fill();
+        }
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.fillStyle = '#3a3a38';
+      ctx.font = 'bold ' + (pl.boss ? 24 : 22) + 'px -apple-system,"PingFang SC",serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(pl.target.c, 0, pl.boss ? -9 : -8);
+
+      ctx.fillStyle = '#8a6538';
+      ctx.font = '11px -apple-system,"PingFang SC",serif';
+      ctx.fillText(pl.target.p, 0, pl.boss ? 14 : 12);
+
+      if (pl.boss) {
+        ctx.fillStyle = 'rgba(184,69,58,0.9)';
+        ctx.font = 'bold 9px -apple-system,"PingFang SC",serif';
+        ctx.fillText('— 令 牌 —', 0, -h / 2 - 2);
+      }
+      if (pl.maxHp === 2 && pl.hp === 1) {
+        ctx.strokeStyle = 'rgba(90,70,50,0.6)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(-w / 2 + 6, -14);
+        ctx.lineTo(-2, -2);
+        ctx.lineTo(-8, 8);
+        ctx.stroke();
+      }
+
+      /* 被字火烧到：底部暖光 + 两侧火苗 + 火星上窜 */
+      if (pl.burnT > 0) {
+        var ba = clamp(pl.burnT / 0.9, 0, 1);
+
+        var wg = ctx.createRadialGradient(0, h / 2, 2, 0, h / 2, w * 1.1);
+        wg.addColorStop(0, 'rgba(240,164,80,' + (0.42 * ba).toFixed(2) + ')');
+        wg.addColorStop(1, 'rgba(205,92,52,0)');
+        ctx.fillStyle = wg;
+        ctx.beginPath();
+        ctx.ellipse(0, h / 2 + 4, w * 0.95, h * 0.6, 0, 0, TAU);
+        ctx.fill();
+
+        drawFlame(-w * 0.44, h / 2 + 2, 24, 9, ba * 0.9, pl.seed);
+        drawFlame(w * 0.42, h / 2 + 2, 20, 8, ba * 0.85, pl.seed + 3.1);
+        drawFlame(0, h / 2 + 3, 15, 7, ba * 0.6, pl.seed + 5.4);
+
+        for (var em = 0; em < 3; em++) {
+          var emY = h / 2 - ((st.t * 46 + em * 17 + pl.seed * 10) % 46);
+          ctx.globalAlpha = ba * 0.7;
+          ctx.fillStyle = 'rgba(238,158,74,0.95)';
+          ctx.beginPath();
+          ctx.arc(-w * 0.3 + em * w * 0.3 + Math.sin(st.t * 9 + em) * 3, emY, 1.7, 0, TAU);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.restore();
+      ctx.textBaseline = 'alphabetic';
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function drawShots() {
+    for (var i = 0; i < shots.length; i++) {
+      var s = shots[i];
+      var k = clamp(s.t / s.dur, 0, 1);
+      var x = s.x + (s.tx - s.x) * k;
+      var y = s.y + (s.ty - s.y) * k - Math.sin(k * Math.PI) * 44;
+      var seed = s.seed || 0;
+
+      /* 拖尾火星：前几帧的位置留 3 点残火 */
+      for (var e = 0; e < 3; e++) {
+        var tp = clamp(k - 0.05 * (e + 1), 0, 1);
+        var ex = s.x + (s.tx - s.x) * tp;
+        var ey = s.y + (s.ty - s.y) * tp - Math.sin(tp * Math.PI) * 44;
+        ctx.globalAlpha = 0.42 - e * 0.12;
+        ctx.fillStyle = e === 0 ? 'rgba(238,158,74,0.95)' : 'rgba(205,92,52,0.85)';
+        ctx.beginPath();
+        ctx.arc(ex + Math.sin(st.t * 13 + e * 2) * 3, ey + e * 5, 3.2 - e * 0.7, 0, TAU);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      /* 火苗本体：字就是火焰的心 */
+      drawFlame(x, y + 14, 42, 16, 0.95, seed);
+      drawFlame(x + Math.sin(st.t * 6 + seed) * 3, y + 12, 26, 9, 0.55, seed + 2);
+
+      /* 字：纸色描边压在火上，保证在浅底和火焰上都看得清 */
+      ctx.save();
+      ctx.font = 'bold 27px -apple-system,"PingFang SC",serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3.6;
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(255,252,244,0.9)';
+      ctx.strokeText(s.ch, x, y - 1);
+      ctx.fillStyle = '#2f2b28';
+      ctx.fillText(s.ch, x, y - 1);
+      ctx.restore();
+    }
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  /* 中间对撞：我方字从左边撞上去，敌将的字在中间碎掉 */
+  function drawClashes() {
+    for (var i = 0; i < clashes.length; i++) {
+      var cl = clashes[i];
+      var k = clamp(cl.t / cl.dur, 0, 1);
+      var cx = cl.x, cy = cl.y;
+      var hitK = clamp(k / 0.32, 0, 1);
+      var fade = k < 0.78 ? 1 : (1 - (k - 0.78) / 0.22);
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      /* 冲击环 */
+      if (k > 0.18) {
+        var rk = clamp((k - 0.18) / 0.82, 0, 1);
+        ctx.strokeStyle = 'rgba(198,164,104,' + (0.7 * (1 - rk)).toFixed(2) + ')';
+        ctx.lineWidth = 5 * (1 - rk) + 0.6;
+        ctx.beginPath(); ctx.arc(cx, cy, 14 + rk * 94, 0, TAU); ctx.stroke();
+        ctx.strokeStyle = 'rgba(184,69,58,' + (0.42 * (1 - rk)).toFixed(2) + ')';
+        ctx.lineWidth = 2 * (1 - rk) + 0.4;
+        ctx.beginPath(); ctx.arc(cx, cy, 8 + rk * 58, 0, TAU); ctx.stroke();
+      }
+
+      /* 敌将的字：从右侧被撞进来，撞上即碎 */
+      if (cl.foeWord) {
+        var ek = clamp(k / 0.34, 0, 1);
+        ctx.globalAlpha = (1 - ek) * 0.85;
+        ctx.font = 'bold 26px -apple-system,"PingFang SC",serif';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255,252,244,0.8)';
+        ctx.strokeText(cl.foeWord, cx + 26 + (1 - ek) * 46, cy - 2);
+        ctx.fillStyle = 'rgba(94,98,102,0.9)';
+        ctx.fillText(cl.foeWord, cx + 26 + (1 - ek) * 46, cy - 2);
+      }
+
+      /* 我方字：从左侧冲入中点，撞上后微微放大再缩 */
+      var cs = cl.word.split('');
+      var n = cs.length;
+      var slide = (1 - hitK) * -78;
+      var scale = 0.72 + hitK * 0.42 - Math.max(0, k - 0.36) * 0.42;
+      var gap = n >= 4 ? 25 : 30;
+      for (var j = 0; j < n; j++) {
+        var off = (j - (n - 1) / 2) * gap;
+        var x = cx + off + slide;
+        var y = cy + Math.sin(st.t * 30 + j) * (1 - hitK) * 3;
+        ctx.globalAlpha = fade;
+        ctx.font = 'bold ' + Math.round((n >= 4 ? 23 : 27) * scale) + 'px -apple-system,"PingFang SC",serif';
+        ctx.lineWidth = 3.4;
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = 'rgba(255,252,244,0.92)';
+        ctx.strokeText(cs[j], x, y);
+        ctx.fillStyle = k < 0.34 ? '#8a6538' : '#b8453a';
+        ctx.fillText(cs[j], x, y);
+      }
+
+      /* 军阶标签 */
+      ctx.globalAlpha = fade * 0.92;
+      ctx.font = '9.5px -apple-system,"PingFang SC",serif';
+      ctx.fillStyle = 'rgba(138,101,56,0.92)';
+      ctx.fillText(cl.rank + ' 出 战 · ' + cl.dmg + ' 伤', cx, cy + 36);
+      ctx.restore();
+    }
+    ctx.textBaseline = 'alphabetic';
+    ctx.globalAlpha = 1;
+  }
+
+  function drawBits() {
+    for (var i = 0; i < bits.length; i++) {
+      var b = bits[i];
+      ctx.globalAlpha = Math.max(0, b.life / b.max);
+      ctx.fillStyle = b.c;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* =====================================================================
+     十三、流程
+     ===================================================================== */
+  var startScreen = document.getElementById('startScreen');
+  var overScreen = document.getElementById('overScreen');
+  var clearScreenEl = document.getElementById('clearScreen');
+
+  /* 关间战报：胜利/败北都要停一停，让孩子看见自己的状态，手动决定继续 */
+  var pendingTier = 1;
+  function showClearScreen(lvCleared, gotTitle, prevTier) {
+    if (st.mode !== MODE.PLAY) return;
+    st.mode = MODE.INTER;
+    pendingTier = prevTier;
+    /* 竞态保护：玩家恰好开着选字面板时收兵，先把面板收干净 */
+    closeLadder();
+    sel = [];
+    st.lock = false;
+    renderGrid(false);
+    bannerEl.classList.remove('on');
+    document.getElementById('csTag').textContent =
+      '第 ' + lvCleared + ' 关 · 胜' + (gotTitle ? ' · 获封常胜将军' : '');
+    document.getElementById('csStreak').textContent = st.streak;
+    var lvlChars = runChars.slice(st.levelStart);
+    var uniq = [];
+    for (var i = lvlChars.length - 1; i >= 0; i--) {
+      if (uniq.indexOf(lvlChars[i]) < 0) uniq.push(lvlChars[i]);
+    }
+    document.getElementById('csStat').innerHTML =
+      '剩余 <span>' + st.hearts + '</span> 点血 · 本关拼出 <span>' + lvlChars.length + '</span> 个字' +
+      (st.streak < 5 ? '<br>再赢 ' + (5 - st.streak) + ' 场，封「常胜将军」' : '<br>常胜将军 · 保持住');
+    var rc = document.getElementById('csChars');
+    rc.innerHTML = '';
+    uniq.reverse().slice(0, 12).forEach(function (c) {
+      var sp = document.createElement('span');
+      sp.textContent = c;
+      rc.appendChild(sp);
+    });
+    tipEl.textContent = '休整一下 · 点「下一关」继续';
+    clearScreenEl.classList.remove('hide');
+    updateHud();
+  }
+
+  document.getElementById('nextBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    SND.tap();
+    clearScreenEl.classList.add('hide');
+    st.mode = MODE.PLAY;
+    st.levelStart = runChars.length;
+    nextLevel(pendingTier);
+  });
+
+  function startGame() {
+    audioInit();
+    st.mode = MODE.PLAY;
+    st.score = 0; st.hearts = 3; st.level = 1;
+    st.shake = 0; st.flash = 0; st.gold = 0; st.lock = false; st.elapsed = 0;
+    st.combo = 0; st.maxCombo = 0; st.clearing = false; st.failT = 0;
+    st.streak = 0; st.levelStart = 0;
+    /* 手速档案每局重测：不同孩子、不同心情，速度都不一样 */
+    st.playT = 0; st.lastChar = -1;
+    speedLog = []; skillVal = -1;
+    rebuildTier(st.level);
+    chars = []; shots = []; bits = []; plaques = []; clashes = [];
+    runChars = [];
+    myCells = [null, null, null, null];
+    newLearned = [];
+    missT = 0;
+    closeLadder();
+    bannerEl.classList.remove('on');
+    comboEl.classList.remove('on');
+    wrap.classList.remove('lowlife');
+    wrap.classList.remove('dimhud');
+    startScreen.classList.add('hide');
+    overScreen.classList.add('hide');
+    clearScreenEl.classList.add('hide');
+    charlistEl.innerHTML = '';
+    renderMyGrid(null);
+    spawnFoe();
+    updateHud();
+    fullReset();
+    tipEl.textContent = '字母拼出音节 · 声调对上才是那个字';
+  }
+
+  var VERDICTS = [
+    { max: 2, t: '第一阵就退下来，不丢人。', s: '先记住一句：先定调，再出字。声调对了，字自己就浮出来了。' },
+    { max: 5, t: '守住了开头，手已经热了。', s: '这几关的木牌最慢，下一局你只会更快。' },
+    { max: 9, t: '打到这儿，已经不是新手了。', s: '木牌越来越快，你也在变快——这就叫练出来了。' },
+    { max: 14, t: '最难的一段，你硬顶下来了。', s: '生僻字开始认脸了，下次见面就是熟人。' },
+    { max: 999, t: '老将水平。', s: '木牌都不够你烧的，这局已经能教别人了。' }
+  ];
+  function verdictOf(lv) {
+    for (var i = 0; i < VERDICTS.length; i++) if (lv <= VERDICTS[i].max) return VERDICTS[i];
+    return VERDICTS[VERDICTS.length - 1];
+  }
+
+  function gameOver() {
+    st.mode = MODE.OVER;
+    st.lock = true;
+    st.failT = 0;
+    SND.over();
+    closeLadder();
+    bannerEl.classList.remove('on');
+    wrap.classList.remove('lowlife');
+    wrap.classList.add('dimhud');
+    var isNew = st.score > best;
+    if (isNew) {
+      best = st.score;
+      try { localStorage.setItem('pzqb_best', String(best)); } catch (e) {}
+    }
+    var reached = st.level;
+    document.getElementById('finalScore').textContent = st.score;
+    document.getElementById('bestOver').textContent = best;
+    document.getElementById('bestStart').textContent = best;
+    document.getElementById('learnStart').textContent = learnedCount();
+    document.getElementById('newRec').classList.toggle('on', isNew);
+    document.getElementById('overTag').textContent = isNew ? '新 纪 录' : '守 城 失 守';
+    document.getElementById('overLv').textContent = '战 到 第 ' + reached + ' 关' +
+      (st.title ? ' · ' + st.title : '');
+    var newCount = newLearned.length;
+    document.getElementById('overStat').innerHTML =
+      '连胜 <span>' + st.streak + '</span> 场 · 拼出 <span>' + st.score + '</span> 个字' +
+      '<br>' + (newCount > 0 ? ('这一局新学 <span>' + newCount + '</span> 个字 · ') : '') +
+      '累计已学 <span>' + learnedCount() + '</span> 字';
+
+    var v = verdictOf(reached);
+    document.getElementById('overVerdict').textContent = v.t;
+    document.getElementById('overVerdictS').textContent = v.s;
+    document.getElementById('overCombo').textContent =
+      (st.bestStreak >= 2 ? '最 高 连 胜 ' + st.bestStreak + ' 场' : '') +
+      (st.maxCombo >= 2 ? (st.bestStreak >= 2 ? ' · ' : '') + '最 高 连 击 ×' + st.maxCombo : '');
+
+    var rc = document.getElementById('runChars');
+    rc.innerHTML = '';
+    var uniq = [];
+    for (var i = runChars.length - 1; i >= 0 && uniq.length < 12; i--) {
+      if (uniq.indexOf(runChars[i]) < 0) uniq.push(runChars[i]);
+    }
+    if (uniq.length) {
+      var lab = document.createElement('div');
+      lab.style.cssText = 'width:100%;font-size:10px;letter-spacing:3px;color:#a8a292;margin-bottom:2px';
+      lab.textContent = '这 一 局 拼 出 的 字';
+      rc.appendChild(lab);
+      uniq.reverse().forEach(function (c) {
+        var sp = document.createElement('span');
+        sp.textContent = c;
+        rc.appendChild(sp);
+      });
+    }
+
+    overScreen.classList.remove('hide');
+  }
+
+  document.getElementById('startBtn').addEventListener('click', function (e) {
+    e.stopPropagation(); startGame();
+  });
+  document.getElementById('againBtn').addEventListener('click', function (e) {
+    e.stopPropagation(); startGame();
+  });
+
+  /* 节奏开关：慢慢打 / 正常速度 */
+  var paceRow = document.getElementById('paceRow');
+  function paintPace() {
+    Array.prototype.forEach.call(paceRow.children, function (b) {
+      var isSlow = b.getAttribute('data-pace') === 'slow';
+      b.classList.toggle('on', isSlow === slowPace);
+    });
+  }
+  Array.prototype.forEach.call(paceRow.children, function (b) {
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      slowPace = b.getAttribute('data-pace') === 'slow';
+      try { localStorage.setItem(PACE_KEY, slowPace ? '1' : '0'); } catch (err) {}
+      paintPace();
+      SND.tap();
+    });
+  });
+  paintPace();
+
+  var lastMs = 0;
+  function frame(ms) {
+    if (!lastMs) lastMs = ms;
+    var dt = (ms - lastMs) / 1000;
+    lastMs = ms;
+    if (dt > 0.05) dt = 0.05;
+    if (dt < 0) dt = 0;
+    update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  window.addEventListener('resize', function () { resize(); });
+  window.addEventListener('orientationchange', function () { setTimeout(resize, 160); });
+
+  resize();
+  renderMyGrid(null);
+  renderFoeGrid(null);
+  updateHud();
+  document.getElementById('bestStart').textContent = best;
+  document.getElementById('learnStart').textContent = learnedCount();
+  requestAnimationFrame(frame);
+
+  /* 自检钩子：只有地址栏带 ?dev 才会挂上去，正常玩不受影响 */
+  if (/[?&]dev\b/.test(location.search)) {
+    window.__pt = {
+      DB: DB, HOMO: HOMO, TONE_TBL: TONE_TBL,
+      toneOf: toneOf, bareOf: bareOf, toneGroups: toneGroups,
+      ensureLetters: ensureLetters, cards: function () { return cards.map(function (c) { return c ? c.v : null; }); },
+      targets: TARGETS.length, slow: function () { return slowPace; },
+      targetsNow: function () { return TARGETS.length; },
+      homo: function () { return HOMO; },
+      sampleTargets: function (n) {
+        var out = [];
+        for (var i = 0; i < n; i++) { var w = pickTarget(); if (w) out.push({ c: w.c, p: w.p, tri: !!w.m, s: w.s, m: w.m || '', y: w.y }); }
+        return out;
+      },
+      inG12: function (c) { return !!KID[c]; },
+      rankOf: function (c) { return rankOf(c); },
+      spawnsTotal: function () { return spawnTotal; },
+      setHearts: function (n) { st.hearts = n; updateHud(); },
+      clearNow: function () { if (!foe) return false; foe.hp = 1; damageFoe(1, foeX, fieldY - 60, true); return true; },
+      combo: function () { return st.combo; },
+      maxCombo: function () { return st.maxCombo; },
+      clearing: function () { return st.clearing; },
+      failT: function () { return st.failT; },
+      forceLeak: function () {
+        for (var i = 0; i < plaques.length; i++) {
+          if (!plaques[i].dying) { plaques[i].x = guardX + 12; return true; }
+        }
+        return false;
+      },
+      loseHeart: function () { loseHeart(); },
+      overShown: function () { return !overScreen.classList.contains('hide'); },
+      overText: function () {
+        return [document.getElementById('overTag').textContent,
+          document.getElementById('overLv').textContent,
+          document.getElementById('overVerdict').textContent].join(' / ');
+      },
+      bannerText: function () {
+        return bannerEl.classList.contains('on') ? (bannerMain.textContent + '|' + bannerSub.textContent) : '';
+      },
+      runChars: function () { return runChars.join(''); },
+      streak: function () { return st.streak; },
+      bestStreak: function () { return st.bestStreak; },
+      title: function () { return st.title; },
+      hpMax: function () { return HP_MAX; },
+      clashes: function () { return clashes.length; },
+      putMyChars: function (arr) {
+        myCells = [null, null, null, null];
+        arr.forEach(function (c, i) { if (i < 4) myCells[i] = { ch: c, p: '' }; });
+        renderMyGrid(null);
+        return myCells.map(function (c) { return c ? c.ch : '·'; }).join('');
+      },
+      addChar: function (c) { addMyChar({ c: c, p: '' }); },
+      idiom: function (a, b, c, d) { return findIdiom([{ ch: a }, { ch: b }, { ch: c }, { ch: d }]); },
+      wordCheck: function (a, b) { return !!(WORD_SET[a + b] || WORD_SET[b + a]); },
+      clashNow: function () { clashAt('营长', '白云', 2, '半'); },
+      hurt: function (n) { loseHeart(n || 1); },
+      inter: function () { return st.mode === MODE.INTER; },
+      feedEntry: function () { return wordFeedEntry([]) ? wordFeedEntry([]).c : null; },
+      forceNewWave: function () { newWave(); },
+      setLevelStart: function (n) { st.levelStart = n; },
+      heartsMode: function () { return wrap.className; },
+      clearField: function () { plaques.length = 0; },
+      pools: function () { buildPools(); return { r1: POOL[1].length, r2: POOL[2].length, r3: POOL[3].length }; },
+      inG34: function (c) { return !!G34[c]; },
+      updateHud: updateHud,
+      tier: function () { return tierOf(st.level); },
+      tierLabel: function () { return tierLabel(st.level); },
+      targetChars: function () { return TARGETS.map(function (w) { return w.c; }).join(''); },
+      g34Targets: function () { return TARGETS_G34.length; },
+      topTargets: function () { return TARGETS_TOP.length; },
+      stage: function () { return st.level; },
+      setLevel: function (n) { st.level = n; rebuildTier(n); },
+      homoChars: function () {
+        var n = 0; Object.keys(HOMO).forEach(function (k) { n += HOMO[k].length; });
+        return n;
+      },
+      plaques: function () { return plaques.map(function (q) { return q.target.c + q.target.p + '@' + Math.round(q.x); }); },
+      pushPlaque: function (w) { if (foe) spawnPlaque(w); },
+      foeObj: function () { return foe; },
+      simHit: function () {
+        var best = null;
+        for (var i = 0; i < plaques.length; i++) {
+          var q = plaques[i];
+          if (!q.dying && (!best || q.x < best.x)) best = q;
+        }
+        if (!best) return false;
+        best.dying = true; best.dieT = 0.6;
+        st.score++;
+        damageFoe(1, best.x, best.y, true);
+        return true;
+      },
+      hearts: function () { return st.hearts; },
+      elapsed: function () { return st.elapsed; },
+      /* 手速匹配自检 */
+      skill: function () { return skillNow(); },
+      skillRaw: function () { return skillVal; },
+      speedLog: function () { return speedLog.slice(); },
+      matchMul: function () { return levelSpeedMul(); },
+      matchLabel: function () { return matchLabel(); },
+      feedSkill: function (sec) { skillNote(sec); updateHud(); },
+      setPlayT: function (v) { st.playT = v; },
+      damage: function (n) { damageFoe(n, 0, 0, false); },
+      plaqueWords: function () {
+        return plaques.map(function (q) {
+          return { c: q.target.c, p: q.target.p, s: q.target.s, m: q.target.m || '', y: q.target.y };
+        });
+      },
+      foeState: function () { return foe ? foe.state + ':' + (foe.target ? foe.target.c : '-') : 'none'; },
+      plaque: function (ch) {
+        for (var i = 0; i < DB.length; i++) {
+          if (DB[i].c === ch) { spawnPlaque(DB[i]); return DB[i].p; }
+        }
+        return null;
+      },
+      ladder: function (key) {
+        var arr = HOMO[key] || [];
+        for (var i = 0; i < arr.length; i++) {
+          var w = { c: arr[i].c, p: arr[i].p };
+          var parts = key.split('|'), s = null, y = null, m = null;
+          parts.forEach(function (p) {
+            var k = kindOf(p);
+            if (k === 's') s = p; else if (k === 'm') m = p; else y = p;
+          });
+          if (!s) return null;
+          w.s = s; w.y = y || s; if (m) w.m = m;
+          openLadder(w);
+          return w.p;
+        }
+        return null;
+      }
+    };
+  }
+})();
+</script>
+</body>
+</html>
