@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#f8f5ec">
-<title>拼字奇兵</title>
+<title>拼好兵 · 拼音对拼</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%;overflow:hidden;background:#e9e4d6;
@@ -33,25 +33,27 @@
     opacity:0;transition:opacity .3s}
   #titleTag.on{opacity:1}
 
-  /* ---------- 双方字格（镜像） ---------- */
-  #duelBand{position:absolute;left:0;right:0;top:40%;height:26%;z-index:6;pointer-events:none}
+  /* ---------- 双方字格（镜像，参考布局图：立在两侧、小人站下方） ---------- */
+  #duelBand{position:absolute;left:0;right:0;top:18%;height:23%;z-index:6;pointer-events:none}
+  #duelBand::after{content:'';position:absolute;left:50%;top:-6%;bottom:-6%;
+    border-left:1.5px dashed rgba(180,172,152,.55)}
   .fgrid{position:absolute;top:0;bottom:0;width:18%;display:flex;flex-direction:column;gap:5px}
-  #myGrid{left:30%}
-  #foeGrid{right:30%}
+  #myGrid{left:20%}
+  #foeGrid{right:4%}
   .fcell{flex:1;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    border:1.3px dashed rgba(120,130,125,.28);background:rgba(255,255,255,.4);transition:background .25s}
+    border:1.3px solid rgba(203,179,145,.5);background:transparent;transition:background .25s}
   .fcell .zh{font-size:21px;font-weight:800;line-height:1.1}
   .fcell .py{font-size:9px;color:#9a9484;margin-top:1px}
   #myGrid .fcell.full{border-style:solid;border-color:#cbb391;background:#fffdf7}
   #myGrid .fcell.full .zh{color:#8a6538}
-  #foeGrid .fcell{border-color:rgba(90,94,98,.3);background:rgba(236,233,226,.5)}
+  #foeGrid .fcell{border-color:rgba(185,179,166,.55);background:transparent}
   #foeGrid .fcell.full{border-style:solid;border-color:#a9a396;background:#e9e5dc}
   #foeGrid .fcell.full .zh{color:#3a3a38}
   .fcell.pop{animation:cellIn .35s ease-out}
   .fcell.boom{animation:boomOut .5s forwards}
   @keyframes cellIn{from{transform:scale(.4);opacity:0}}
   @keyframes boomOut{40%{transform:scale(1.25)}100%{transform:scale(.3);opacity:0}}
-  .fgridLabel{position:absolute;top:-16px;font-size:9px;letter-spacing:2px;color:#9a9484}
+  .fgridLabel{position:absolute;bottom:-17px;font-size:9px;letter-spacing:2px;color:#9a9484}
   #myGrid .fgridLabel{left:2px}
   #foeGrid .fgridLabel{right:2px}
 
@@ -79,6 +81,10 @@
   .cell.s .lb,.cell.s .kx{color:#3f6273}
   .cell.m{background:linear-gradient(160deg,#f1ebf3,#e5dbe9);border:1.3px solid rgba(160,130,170,.5)}
   .cell.m .lb,.cell.m .kx{color:#6b5573}
+  .cell.c{background:linear-gradient(160deg,#eef1ec,#dde4dc);border:1.4px solid rgba(110,140,120,.6)}
+  .cell.c .lb{font-size:15px;letter-spacing:0}
+  .cell.c .kx{color:#4d6656;font-size:7px;letter-spacing:0;opacity:.8;white-space:nowrap}
+  .cell.four .lb{font-size:12px}
   .cell.y{background:linear-gradient(160deg,#f9f0e3,#f2e5d4);border:1.3px solid rgba(190,155,110,.55)}
   .cell.y .lb,.cell.y .kx{color:#8a6538}
   .cell.sel{transform:translateY(-4px) scale(1.04);
@@ -198,12 +204,44 @@
   .sub .k2{background:rgba(249,240,227,.96);color:#8a6538}
   .best{margin-top:9px;font-size:11.5px;color:#9a9484;letter-spacing:1px}
   .grades{margin-top:11px;font-size:10.5px;color:#a8a292;letter-spacing:.2px}
-  .pace{display:flex;gap:8px;margin-top:11px}
-  .pbtn{border:1.5px solid #d8cfba;background:#fbf8f1;color:#9a9484;font-family:inherit;
-    font-size:11.5px;padding:7px 15px;border-radius:20px;letter-spacing:1px;cursor:pointer;
-    transition:background .15s,border-color .15s}
-  .pbtn.on{background:#f7e8e4;border-color:#b8453a;color:#b8453a;font-weight:700}
-  .pbtn:active{transform:scale(.95)}
+  /* ---------- 首页版本选择 ---------- */
+  .pickTitle{margin-top:14px;font-size:10px;letter-spacing:4px;color:#a8a292}
+  .heroPick{margin-top:9px;display:flex;align-items:center;gap:8px;font-size:10px;
+    letter-spacing:2px;color:#a8a292;background:#fbf8f1;border:1.4px solid #ded5c2;
+    border-radius:999px;padding:5px 13px;cursor:pointer;font-family:inherit}
+  .heroPick b{color:#5b5648;font-size:11.5px;letter-spacing:1px}
+  .heroPick span{color:#b8453a;font-size:10px;letter-spacing:0}
+  .heroPanel{position:absolute;inset:0;z-index:32;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;padding:34px 24px;
+    background:radial-gradient(120% 85% at 50% 30%,rgba(248,245,236,.975),rgba(240,235,224,.995));
+    transition:opacity .25s}
+  .heroPanel.hide{opacity:0;pointer-events:none}
+  .hpTitle{font-size:10px;letter-spacing:6px;color:#a8a292;margin-bottom:13px}
+  .hpFacs{display:flex;gap:7px;margin-bottom:13px}
+  .hpFac{border:1.4px solid #ded5c2;background:#fbf8f1;border-radius:999px;padding:4px 15px;
+    font-family:inherit;font-size:12px;color:#7a7466;cursor:pointer;letter-spacing:2px}
+  .hpGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:312px}
+  .hpCell{border:1.4px solid #ded5c2;background:#fbf8f1;border-radius:10px;padding:8px 3px 7px;
+    font-family:inherit;cursor:pointer;text-align:center;transition:background .15s,border-color .15s}
+  .hpCell:active{transform:scale(.97)}
+  .hpCell.on{border-color:#b8453a;background:#f7e8e4}
+  .hpCell .hn{font-size:12.5px;font-weight:800;color:#5b5648;letter-spacing:1px}
+  .hpCell.on .hn{color:#b8453a}
+  .hpCell .ht{margin-top:2px;font-size:8.5px;color:#a8a292;letter-spacing:0}
+  .hpBtn{margin-top:15px}
+  .modes{display:flex;gap:7px;margin-top:8px;width:100%;max-width:342px}
+  .mcard{flex:1;border:1.6px solid #ded5c2;background:#fbf8f1;border-radius:12px;
+    padding:10px 5px 11px;font-family:inherit;cursor:pointer;text-align:center;
+    transition:background .15s,border-color .15s,box-shadow .15s,transform .12s}
+  .mcard:active{transform:scale(.97)}
+  .mcard.on{background:#f7e8e4;border-color:#b8453a;box-shadow:0 6px 16px rgba(184,69,58,.16)}
+  .mName{font-size:13px;font-weight:800;letter-spacing:1px;color:#5b5648}
+  .mcard.on .mName{color:#b8453a}
+  .mTag{margin-top:3px;font-size:9px;letter-spacing:1.6px;color:#a8a292}
+  .mcard.on .mTag{color:#c07b6f}
+  .mDesc{margin-top:7px;font-size:8.6px;line-height:1.7;color:#9a9484;letter-spacing:0}
+  .mcard.on .mDesc{color:#8a6a62}
+  .ruleLine{margin-top:8px;font-size:10px;color:#a8a292;letter-spacing:.4px}
   .best b{color:#3a3a38;font-size:14px;margin-left:5px}
   .btn{margin-top:16px;border:0;cursor:pointer;font-family:inherit;padding:15px 48px;border-radius:40px;
     font-size:15px;font-weight:800;letter-spacing:3px;color:#ffffff;
@@ -211,6 +249,13 @@
     box-shadow:0 10px 30px rgba(184,69,58,.32),inset 0 -2px 0 rgba(0,0,0,.15);
     transition:transform .12s}
   .btn:active{transform:scale(.95)}
+  .btn.ghost{margin-top:9px;background:none;color:#8b8474;border:1.4px solid #ded5c2;
+    box-shadow:none;padding:11px 32px;font-size:12.5px;letter-spacing:2px}
+  .btn.ghost:active{transform:scale(.96);background:rgba(222,213,194,.18)}
+  #homeBtnHud{pointer-events:auto;margin-top:7px;border:1.2px solid #ded5c2;
+    background:rgba(251,248,241,.92);color:#9a9484;font-family:inherit;font-size:9.5px;
+    letter-spacing:2px;padding:3px 10px;border-radius:999px;cursor:pointer;transition:all .15s}
+  #homeBtnHud.arm{color:#b8453a;border-color:#b8453a;background:rgba(247,232,228,.95)}
   .hint{position:absolute;bottom:22px;left:0;right:0;font-size:10px;color:#b3ad9c;letter-spacing:2px}
   .big{font-size:58px;font-weight:900;color:#3a3a38;line-height:1;letter-spacing:-2px}
   .unit{font-size:11.5px;color:#9a9484;letter-spacing:3px;margin-top:9px}
@@ -241,6 +286,7 @@
         <div id="score">0</div>
         <div id="meta">第 1 关</div>
         <div id="titleTag"></div>
+        <button id="homeBtnHud">回 营</button>
       </div>
     </div>
 
@@ -278,19 +324,42 @@
     <div id="comboTag"></div>
 
     <div class="screen" id="startScreen">
-      <div class="eyebrow">长 坂 坡 · 赵 云 守 关</div>
-      <h1>拼字奇兵<br><em>拼音对拼</em></h1>
+      <div class="eyebrow" id="homeEyebrow">三 国 汉 字 大 战</div>
+      <h1>拼好兵<br><em>拼音对拼</em></h1>
       <p class="sub">对面的敌将也在拼字，<br>写着你拼的音的<b>木牌</b>会朝你走来。<br>
       用字母拼出那个音：<span class="k">b</span>+<span class="k2">an</span> = <b>bān</b><br>
       选对声调，挑出 <b>班·半·搬·爸</b> 里对的那个字<br>
       选对的字落进我方字格，凑成词，字将出战！</p>
-      <div class="grades"><b style="color:#b8453a">3 条命 · 打空敌将血条就破一关 · 命用完收兵</b><br>1-5 关只管慢慢拼 · 6 关起对手照你的手速配 · 字从常用到生僻</div>
-      <div class="best">已学<b id="learnStart">0</b>字 · 拼字最多<b id="bestStart">0</b>字</div>
-      <div class="pace" id="paceRow">
-        <button class="pbtn on" data-pace="slow">慢 慢 打</button>
-        <button class="pbtn" data-pace="fast">正 常 速 度</button>
+      <div class="pickTitle">选 一 个 版 本</div>
+      <div class="modes" id="modeRow">
+        <button class="mcard on" data-mode="kids">
+          <div class="mName">蒙 学</div>
+          <div class="mTag">识 字 启 蒙</div>
+          <div class="mDesc">慢慢来 · 以认字为主<br>对手让着你 · 破关补血<br>几乎不出生僻字</div>
+        </button>
+        <button class="mcard" data-mode="pro">
+          <div class="mName">会 试</div>
+          <div class="mTag">竞 速</div>
+          <div class="mDesc">上手就快 · 每关计时<br>破关回一格 · 节奏跟手速<br>生僻字早早登场</div>
+        </button>
+        <button class="mcard" data-mode="dian">
+          <div class="mName">殿 试</div>
+          <div class="mTag">极 限</div>
+          <div class="mDesc">硬核原版 · 破关不补血<br>对手步步紧逼<br>只给真正的将军</div>
+        </button>
       </div>
+      <button class="heroPick" id="heroPick">将 领<b id="heroNow">蜀 · 赵 云</b><span>更换</span></button>
+      <div class="ruleLine">3 条命 · 打空敌将就破一关 · 命用完收兵</div>
+      <div class="best">已学<b id="learnStart">0</b>字 · 拼字最多<b id="bestStart">0</b>字 · 最远第<b id="lvStart">0</b>关</div>
+      <button class="btn ghost" id="resumeBtn" style="display:none">续 战</button>
       <button class="btn" id="startBtn">开 战</button>
+    </div>
+
+    <div class="heroPanel hide" id="heroPanel">
+      <div class="hpTitle">选 一 员 将</div>
+      <div class="hpFacs" id="hpFacs"></div>
+      <div class="hpGrid" id="hpGrid"></div>
+      <button class="btn hpBtn" id="hpClose">就 是 他</button>
     </div>
 
     <div class="screen hide" id="overScreen">
@@ -306,6 +375,7 @@
       <div class="runchars" id="runChars"></div>
       <div class="best">最高纪录<b id="bestOver">0</b></div>
       <button class="btn" id="againBtn">再 战 一 局</button>
+      <button class="btn ghost" id="homeBtnOver">返 回 首 页</button>
     </div>
 
     <div class="screen hide" id="clearScreen">
@@ -315,6 +385,7 @@
       <div class="stat" id="csStat"></div>
       <div class="runchars" id="csChars"></div>
       <button class="btn" id="nextBtn">下 一 关</button>
+      <button class="btn ghost" id="homeBtnClear">返 回 首 页</button>
     </div>
   </div>
 </div>
@@ -567,6 +638,39 @@
     if (SHENGMU.indexOf(v) >= 0) return 's';
     if (JIEMU.indexOf(v) >= 0) return 'm';
     return 'y';
+  }
+
+  /* ---------------------------------------------------------------------
+     介韵卡：把三拼的「介母 + 韵母」合成一张卡 —— j + ian = jian。
+     教材里 ian / uan / iao 本来就是一个韵母；合成之后，孩子不会半路
+     拼出 j + i = ji 就走了岔路，也不会被“ji 也是个字”带偏。
+     只合并「不在韵母表里」的组合（ia/ian/iang/iao/iong/ua/uai/uan/uang/uo），
+     ie、iu、ui、ue 这些本来就是双拼韵母，不拆不并。
+     --------------------------------------------------------------------- */
+  var COMPOUND = {
+    'ia': ['i', 'a'], 'ian': ['i', 'an'], 'iang': ['i', 'ang'],
+    'iao': ['i', 'ao'], 'iong': ['i', 'ong'],
+    'ua': ['u', 'a'], 'uai': ['u', 'ai'], 'uan': ['u', 'an'],
+    'uang': ['u', 'ang'], 'uo': ['u', 'o']
+  };
+  function isCompound(v) { return !!COMPOUND[v]; }
+  /* 一张卡背后的真实字母：'j' → [j]，'ian' → [i, an] */
+  function partsOf(v) { return isCompound(v) ? COMPOUND[v].slice() : [v]; }
+  /* 统一造卡：介韵卡是独立的一种 kind（c），其余照旧 */
+  function cardOf(v) {
+    return isCompound(v)
+      ? { v: v, kind: 'c', parts: COMPOUND[v].slice(), id: newId() }
+      : { v: v, kind: kindOf(v), parts: [v], id: newId() };
+  }
+  /* 一个音节需要哪几张卡：三拼一律并成「声母 + 介韵」两张
+     jian → j + ian ｜ liu → l + iu ｜ xue → x + ue ｜ bai → b + ai */
+  function cardsForWord(w) {
+    if (!w.m) return [w.s, w.y];
+    var merged = w.m + w.y;
+    var two = [w.s, merged].sort().join('|');
+    /* 别名表保证两段式可查；万一某个音节只有三段写法，就退回三张卡 */
+    if (HOMO_ALL[two] || !HOMO_ALL[keyOf(w)]) return [w.s, merged];
+    return [w.s, w.m, w.y];
   }
 
   function keyOf(w) {
@@ -822,10 +926,10 @@
     'd+un': '吨dūn,蹲dūn,盾dùn,顿dùn',
     'd+i+ao': '叼diāo,掉diào,钓diào',
     't+ai': '台tái,抬tái,太tài,态tài',
-    't+an': '摊tān,谈tán,毯tǎn,探tàn',
+    't+an': '摊tān,谈tán,毯tǎn,探tàn,炭tàn',
     't+e': '特tè',
     't+eng': '疼téng,藤téng',
-    't+i': '踢tī,提tí,体tǐ,剃tì',
+    't+i': '踢tī,提tí,体tǐ,剃tì,题tí',
     't+i+ao': '挑tiāo,条tiáo,跳tiào',
     't+ie': '帖tiě,铁tiě',
     't+ing': '厅tīng,听tīng,停tíng,挺tǐng',
@@ -890,7 +994,7 @@
     'k+u+o': '扩kuò,阔kuò',
     'h+a': '哈hā,蛤há',
     'h+ang': '夯hāng,行háng,航háng',
-    'h+e': '喝hē,盒hé,河hé,荷hé,贺hè',
+    'h+e': '喝hē,盒hé,河hé,荷hé,贺hè,和hé',
     'h+en': '很hěn,狠hěn,恨hèn',
     'h+eng': '恒héng,横héng',
     'h+ong': '轰hōng,哄hǒng,虹hóng,红hóng',
@@ -898,8 +1002,8 @@
     'h+u+ang': '荒huāng,黄huáng,晃huǎng,谎huǎng',
     'h+un': '婚hūn,魂hún,混hùn',
     'j+i+ang': '江jiāng,姜jiāng,将jiāng,讲jiǎng,匠jiàng',
-    'j+ing': '京jīng,经jīng,惊jīng,井jǐng,静jìng',
-    'j+iu': '究jiū,九jiǔ,酒jiǔ,旧jiù,救jiù',
+    'j+ing': '京jīng,经jīng,惊jīng,井jǐng,静jìng,睛jīng,净jìng',
+    'j+iu': '究jiū,九jiǔ,酒jiǔ,旧jiù,救jiù,久jiǔ',
     'j+u+an': '捐juān,卷juǎn,眷juàn',
     'j+u+e': '决jué,觉jué,绝jué',
     'q+i+a': '掐qiā,恰qià',
@@ -999,15 +1103,39 @@
     'm+iu': '谬miù',
     'd+ei': '得děi',
     
-    'j+ie': '接jiē,街jiē,结jié,姐jiě,界jiè'
+    'j+ie': '接jiē,街jiē,结jié,姐jiě,界jiè',
+
+    /* ---- 成语补字：让「大将军」真的打得出来（一个字也不能缺） ---- */
+    'x+ing': '兴xīng',
+    'l+i': '丽lì',
+    'q+i': '气qì',
+    'w+u': '无wú',
+    'm+ei': '媚mèi',
+    's+u+o': '梭suō',
+    'j+in': '锦jǐn',
+    't+i+an': '添tiān',
+    'h+u+a': '画huà',
+    'zh+u': '株zhū,助zhù,注zhù',
+    'd+ai': '待dài',
+    'w+ang': '亡wáng',
+    'w+ei': '威wēi',
+    'y+an': '言yán',
+    'd+eng': '瞪dèng',
+    'c+ai': '采cǎi',
+    'g+u+an': '贯guàn',
+    'z+u+o': '做zuò'
   };
+  /* 追加式合并：同一个音节里如果已经有字，把补的字塞进去而不是整条丢掉 */
   Object.keys(EXTRA_RAW).forEach(function (k) {
     var letters = k.split('+').sort().join('|');
-    if (!HOMO_ALL[letters]) {
-      HOMO_ALL[letters] = EXTRA_RAW[k].split(',').map(function (tok) {
-        return { c: tok.charAt(0), p: tok.slice(1) };
-      });
-    }
+    var add = EXTRA_RAW[k].split(',').map(function (tok) {
+      return { c: tok.charAt(0), p: tok.slice(1) };
+    });
+    var arr = HOMO_ALL[letters] || (HOMO_ALL[letters] = []);
+    add.forEach(function (o) {
+      for (var i = 0; i < arr.length; i++) if (arr[i].c === o.c) return;
+      arr.push(o);
+    });
   });
 
   /* 字库里的字必须都在同音字表里出现，否则木牌上的字永远拼不出来 */
@@ -1016,6 +1144,24 @@
     if (!arr) return;
     for (var i = 0; i < arr.length; i++) { if (arr[i].c === w.c) return; }
     arr.push({ c: w.c, p: w.p });
+  });
+
+  /* ---------------------------------------------------------------------
+     介韵别名：三拼统一走「声母 + 介韵」两张卡（x + ue、j + ian）。
+     表里有的写成 'e|u|x' 三段、有的已经是 'iu|l' 两段，
+     这里给三段式补一条两段别名，两种查法都能找到同一组字。
+     --------------------------------------------------------------------- */
+  Object.keys(HOMO_ALL).forEach(function (k) {
+    var segs = k.split('|');
+    if (segs.length !== 3) return;
+    var s = null, rest = [];
+    segs.forEach(function (x) { if (!s && SHENGMU.indexOf(x) >= 0) s = x; else rest.push(x); });
+    if (!s || rest.length !== 2) return;
+    var m = null, y = null;
+    rest.forEach(function (x) { if (!m && (x === 'i' || x === 'u')) m = x; else y = x; });
+    if (!m || !y) return;
+    var alias = [s, m + y].sort().join('|');
+    if (!HOMO_ALL[alias]) HOMO_ALL[alias] = HOMO_ALL[k];
   });
 
   /* =====================================================================
@@ -1101,8 +1247,10 @@
         (byTone[t] = byTone[t] || []).push(o);
       });
       list.forEach(function (o) {
-        /* 出牌要求：这一声里至少还有另一个字可选，不然没得挑 */
-        if ((byTone[toneOf(o.p)] || []).length < 2) return;
+        /* 出牌要求：这个音节里至少有两个字，声调那一步才有得比。
+           不再要求「同一调里两个字」——否则像 底(dǐ)、用(yòng) 这种
+           同音不同调的常用字永远上不了牌，成语也就永远凑不齐 */
+        if (list.length < 2) return;
         var w = wordFromKey(k, o);
         if (!w) return;
         POOL[rankOf(o.c)].push(w);
@@ -1124,17 +1272,26 @@
     return (arr && arr.length) ? arr[(Math.random() * arr.length) | 0] : null;
   }
 
-  /* 按关卡挑木牌目标：1~5 关基本只出最常用的字，6~10 关混进阶字，11 关起生僻字为主 */
+  /* 按版本+关卡挑木牌目标：儿童版先常用、慢慢才见生僻；
+     进阶版从第 1 关就掺进阶字，9 关以后生僻字过半。
+     进阶版另外做「词/成语向导」：字格里有字时，经常直接递上能组词、
+     甚至能补成四字成语的那个字 —— 营长和大将军不再靠运气。 */
   function pickTarget() {
-    var lv = st.level, roll = Math.random(), r;
-    if (lv <= 5) {
-      r = roll < 0.88 ? 1 : 2;
-    } else if (lv <= 10) {
-      r = roll < 0.45 ? 1 : (roll < 0.88 ? 2 : 3);
-    } else {
-      r = roll < 0.18 ? 1 : (roll < 0.5 ? 2 : 3);
+    if (!isKids() && myCells && myCells.some(Boolean) && Math.random() < 0.7) {
+      var fed = null;
+      if (Math.random() < CFG.feed.idiom) fed = idiomFeedEntry([]);
+      if (!fed) fed = wordFeedEntry([]);
+      if (fed) return fed;
     }
+    var lv = st.level, roll = Math.random(), r;
+    var w = poolWeights();
+    r = roll < w[0] ? 1 : (roll < w[0] + w[1] ? 2 : 3);
     return pickFromPool(r) || pickFromPool(1) || pickFromPool(2) || pickFromPool(3) || weightedPick(TARGETS);
+  }
+  function poolWeights() {
+    var P = CFG.pools, lv = st.level;
+    if (isKids()) return P[lv <= 5 ? 0 : (lv <= 10 ? 1 : 2)];
+    return P[lv <= 3 ? 0 : (lv <= 7 ? 1 : (lv <= 12 ? 2 : 3))];
   }
 
   /* =====================================================================
@@ -1270,6 +1427,23 @@
     return null;
   }
 
+  /* 全字表索引：成语/词表里的字，只要在同音字表里出现过就能拼出来，
+     不能只认 DB/TARGETS，否则「意」「暖」这种字永远递不上来 */
+  var SYL_ANY = null;
+  function sylAnyFor(c) {
+    if (!SYL_ANY) {
+      SYL_ANY = {};
+      Object.keys(HOMO_ALL).forEach(function (k) {
+        HOMO_ALL[k].forEach(function (o) {
+          if (SYL_ANY[o.c]) return;
+          var w = wordFromKey(k, o);
+          if (w) SYL_ANY[o.c] = w;
+        });
+      });
+    }
+    return SYL_ANY[c] || sylEntryFor(c);
+  }
+
   /* =====================================================================
      二、工具
      ===================================================================== */
@@ -1303,11 +1477,12 @@
     W = w; H = h;
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
-    fieldY = h * 0.41;
-    guardX = Math.max(64, w * 0.20);
-    zyX = Math.max(34, w * 0.105);
-    foeX = W - zyX;
+    fieldY = h * 0.46;     /* 地平线：字格立在两侧，小人站在字格正下方的地线上 */
+    guardX = Math.max(58, w * 0.14);   /* 守护线就在赵云身前 */
+    zyX = Math.max(30, w * 0.115);
+    foeX = W - Math.max(56, w * 0.155);
     buildPaper();
+    buildFarScene();
   }
 
   /* 宣纸底纹（缓存） */
@@ -1331,6 +1506,181 @@
     vg.addColorStop(1, 'rgba(160,145,115,0.11)');
     pc.fillStyle = vg;
     pc.fillRect(0, 0, W, H);
+  }
+
+  /* ---------------------------------------------------------------------
+     远景：淡墨山峦 + 山脚城楼 + 留白云雾。
+     学水墨画的层次：远山最淡、中山稍浓、近山带脊线；山腰横一道雾气断开，
+     城楼压在雾脚，只露剪影，红幡点一笔朱砂。整幅离屏缓存，只在尺寸变化时重画。
+     --------------------------------------------------------------------- */
+  var farCanvas = null;
+  function buildFarScene() {
+    farCanvas = document.createElement('canvas');
+    farCanvas.width = Math.max(1, Math.round(W));
+    farCanvas.height = Math.max(1, Math.round(H));
+    var fc = farCanvas.getContext('2d');
+    var horizon = fieldY;
+
+    /* 种子随机：同一尺寸每次画出来一样，不会闪 */
+    function seedRnd(seed) {
+      var t = seed >>> 0;
+      return function () {
+        t += 0x6D2B79F5;
+        var r = t;
+        r = Math.imul(r ^ (r >>> 15), r | 1);
+        r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    /* 天光：极淡青灰，往下化进纸色 */
+    var sky = fc.createLinearGradient(0, 0, 0, horizon);
+    sky.addColorStop(0, 'rgba(146,160,166,0.11)');
+    sky.addColorStop(0.5, 'rgba(158,168,170,0.055)');
+    sky.addColorStop(1, 'rgba(200,196,180,0)');
+    fc.fillStyle = sky;
+    fc.fillRect(0, 0, W, horizon);
+
+    function ridge(seed, peakH, baseY, alpha, hue) {
+      var rnd = seedRnd(seed);
+      var n = 4 + Math.floor(rnd() * 3);
+      var pts = [];
+      for (var i = 0; i <= n; i++) {
+        var x = (W / n) * i;
+        if (i > 0 && i < n) x += (rnd() - 0.5) * (W / n) * 0.55;
+        var edge = (i === 0 || i === n) ? 0.42 : 1;
+        var h = peakH * (0.4 + rnd() * 0.6) * edge;
+        pts.push({ x: x, y: baseY - h });
+      }
+      fc.beginPath();
+      fc.moveTo(-12, horizon);
+      fc.lineTo(pts[0].x, pts[0].y);
+      for (var j = 1; j < pts.length; j++) {
+        var a = pts[j - 1], b = pts[j];
+        var mx = (a.x + b.x) / 2;
+        fc.quadraticCurveTo(mx, Math.min(a.y, b.y) - peakH * 0.06, b.x, b.y);
+      }
+      fc.lineTo(W + 12, horizon);
+      fc.closePath();
+      var g = fc.createLinearGradient(0, baseY - peakH, 0, horizon);
+      g.addColorStop(0, 'rgba(' + hue + ',' + (alpha * 1.2).toFixed(3) + ')');
+      g.addColorStop(0.6, 'rgba(' + hue + ',' + alpha.toFixed(3) + ')');
+      g.addColorStop(1, 'rgba(' + hue + ',0)');
+      fc.fillStyle = g;
+      fc.fill();
+      fc.strokeStyle = 'rgba(' + hue + ',' + (alpha * 1.45).toFixed(3) + ')';
+      fc.lineWidth = 1.05;
+      fc.stroke();
+    }
+
+    /* 三层山：越远越淡越高、越近越浓越低 */
+    ridge(11, horizon * 0.30, horizon * 0.94, 0.038, '116,130,138');
+    ridge(29, horizon * 0.24, horizon * 0.955, 0.065, '102,116,124');
+    ridge(47, horizon * 0.155, horizon * 0.985, 0.092, '84,97,105');
+
+    /* 山腰雾：横向白气，把山断成两层 */
+    function mist(y, h, a) {
+      var mg = fc.createLinearGradient(0, y - h, 0, y + h);
+      mg.addColorStop(0, 'rgba(248,245,236,0)');
+      mg.addColorStop(0.5, 'rgba(248,245,236,' + a + ')');
+      mg.addColorStop(1, 'rgba(248,245,236,0)');
+      fc.fillStyle = mg;
+      fc.fillRect(0, y - h, W, h * 2);
+    }
+    mist(horizon * 0.855, W * 0.05, 0.7);
+    mist(horizon * 0.94, W * 0.035, 0.55);
+
+    /* 城楼：压在雾脚，只勾剪影 */
+    (function cityTower() {
+      var cx = W / 2;
+      var hh = Math.min(66, W * 0.15);
+      var w = hh * 1.18;
+      var ink = 'rgba(64,74,80,0.17)';
+      var wash = 'rgba(104,114,118,0.085)';
+      fc.strokeStyle = ink;
+      fc.lineWidth = 1.3;
+      fc.lineJoin = 'round';
+
+      /* 夯土台基 + 垛口 */
+      var baseTop = horizon - hh * 0.30;
+      fc.fillStyle = wash;
+      fc.fillRect(cx - w * 0.5, baseTop, w, hh * 0.30);
+      fc.strokeRect(cx - w * 0.5, baseTop, w, hh * 0.30);
+      var teeth = 4;
+      for (var i = 0; i < teeth; i++) {
+        var tw = w / (teeth * 2 - 1);
+        fc.fillStyle = wash;
+        fc.fillRect(cx - w * 0.5 + i * tw * 2, baseTop - hh * 0.055, tw, hh * 0.055);
+        fc.strokeRect(cx - w * 0.5 + i * tw * 2, baseTop - hh * 0.055, tw, hh * 0.055);
+      }
+
+      /* 楼身 */
+      var bodyTop = baseTop - hh * 0.34;
+      fc.fillStyle = 'rgba(96,106,110,0.13)';
+      fc.fillRect(cx - w * 0.29, bodyTop, w * 0.58, hh * 0.34);
+      fc.strokeRect(cx - w * 0.29, bodyTop, w * 0.58, hh * 0.34);
+      /* 两扇窗 */
+      fc.fillStyle = 'rgba(248,245,236,0.55)';
+      fc.fillRect(cx - w * 0.17, bodyTop + hh * 0.09, w * 0.10, hh * 0.10);
+      fc.fillRect(cx + w * 0.07, bodyTop + hh * 0.09, w * 0.10, hh * 0.10);
+
+      /* 歇山顶：两坡带翘角 */
+      var eaveY = bodyTop;
+      var ridgeY = bodyTop - hh * 0.22;
+      fc.beginPath();
+      fc.moveTo(cx - w * 0.46, eaveY - hh * 0.02);
+      fc.quadraticCurveTo(cx - w * 0.30, ridgeY + hh * 0.10, cx - w * 0.14, ridgeY);
+      fc.lineTo(cx + w * 0.14, ridgeY);
+      fc.quadraticCurveTo(cx + w * 0.30, ridgeY + hh * 0.10, cx + w * 0.46, eaveY - hh * 0.02);
+      fc.closePath();
+      fc.fillStyle = 'rgba(74,84,90,0.13)';
+      fc.fill();
+      fc.stroke();
+      /* 翘角两笔 */
+      fc.beginPath();
+      fc.moveTo(cx - w * 0.46, eaveY - hh * 0.02);
+      fc.quadraticCurveTo(cx - w * 0.54, eaveY - hh * 0.10, cx - w * 0.50, eaveY - hh * 0.15);
+      fc.moveTo(cx + w * 0.46, eaveY - hh * 0.02);
+      fc.quadraticCurveTo(cx + w * 0.54, eaveY - hh * 0.10, cx + w * 0.50, eaveY - hh * 0.15);
+      fc.stroke();
+
+      /* 旗杆 + 朱砂小幡 */
+      fc.strokeStyle = 'rgba(64,74,80,0.20)';
+      fc.lineWidth = 1;
+      fc.beginPath();
+      fc.moveTo(cx, ridgeY);
+      fc.lineTo(cx, ridgeY - hh * 0.16);
+      fc.stroke();
+      fc.fillStyle = 'rgba(184,69,58,0.30)';
+      fc.beginPath();
+      fc.moveTo(cx, ridgeY - hh * 0.16);
+      fc.lineTo(cx + w * 0.13, ridgeY - hh * 0.125);
+      fc.lineTo(cx, ridgeY - hh * 0.085);
+      fc.closePath();
+      fc.fill();
+    })();
+
+    /* 两侧山脚：几笔松影，压住画面两头 */
+    function pine(x, baseY, h, alpha) {
+      fc.strokeStyle = 'rgba(70,84,86,' + alpha + ')';
+      fc.fillStyle = 'rgba(70,84,86,' + (alpha * 0.75) + ')';
+      fc.lineWidth = 1.2;
+      fc.beginPath();
+      fc.moveTo(x, baseY);
+      fc.lineTo(x, baseY - h * 0.55);
+      fc.stroke();
+      for (var i = 0; i < 3; i++) {
+        var ly = baseY - h * (0.35 + i * 0.2);
+        var lw = h * (0.30 - i * 0.06);
+        fc.beginPath();
+        fc.moveTo(x - lw, ly + h * 0.06);
+        fc.quadraticCurveTo(x, ly - h * 0.10, x + lw, ly + h * 0.06);
+        fc.quadraticCurveTo(x, ly + h * 0.02, x - lw, ly + h * 0.06);
+        fc.fill();
+      }
+    }
+    pine(W * 0.05, horizon, Math.min(34, W * 0.08), 0.11);
+    pine(W * 0.95, horizon, Math.min(40, W * 0.10), 0.12);
   }
 
   /* =====================================================================
@@ -1409,13 +1759,32 @@
     level: 1, shake: 0, flash: 0, gold: 0,
     elapsed: 0, kickT: 0, lock: false,
     playT: 0, lastChar: -1,          /* 只在对战中走的时钟 + 上一次拼出字的时刻（手速测量用） */
+    levelT: 0, lastT: 0, healed: false,   /* 本关用时 / 上一关用时 / 破关是否补了血 */
     combo: 0, maxCombo: 0, clearing: false, failT: 0,
     streak: 0, bestStreak: 0, title: '', levelStart: 0
   };
-  try { st.title = localStorage.getItem('pzqb_title') || ''; } catch (e) {}
-  try { st.bestStreak = parseInt(localStorage.getItem('pzqb_beststreak') || '0', 10) || 0; } catch (e) {}
+  /* 称号、连胜、最高分按版本分开存：儿童版和进阶版的成绩不能混在一起比 */
+  function saveKey(base) { return isKids() ? base : base + '_' + GAME_MODE; }
+  function loadModeProfile() {
+    try { st.title = localStorage.getItem(saveKey('pzqb_title')) || ''; } catch (e) { st.title = ''; }
+    try { st.bestStreak = parseInt(localStorage.getItem(saveKey('pzqb_beststreak')) || '0', 10) || 0; } catch (e) { st.bestStreak = 0; }
+    try {
+      best = parseInt(localStorage.getItem(saveKey('pzqb_best')) || '0', 10) || 0;
+    } catch (e) { best = 0; }
+    try { bestTime = parseFloat(localStorage.getItem(saveKey('pzqb_besttime')) || '0') || 0; } catch (e) { bestTime = 0; }
+    try { bestLv = parseInt(localStorage.getItem(saveKey('pzqb_bestlv')) || '0', 10) || 0; } catch (e) { bestLv = 0; }
+  }
+
+  /* 里程碑存档：历史最远打到第几关（按版本分开记，败北不清，给以后阵营选代表当参考） */
+  function recordBestLv(n) {
+    if (n > bestLv) {
+      bestLv = n;
+      try { localStorage.setItem(saveKey('pzqb_bestlv'), String(bestLv)); } catch (e) {}
+    }
+  }
 
   var cards = [];        // 8 格字母卡
+  var hudClockT = 0;     // 计时数字刷新节流
   var pending = [];      // 刚生成、还没落格的卡（会被立刻铺满空位）
   var dropTimer = 0;
   var sel = [];          // 选中格子的索引
@@ -1432,9 +1801,9 @@
   var newLearned = [];
 
   var best = 0;
-  try {
-    best = parseInt(localStorage.getItem('pzqb_best') || localStorage.getItem('pt_best') || '0', 10) || 0;
-  } catch (e) { best = 0; }
+  var bestLv = 0;
+  var bestTime = 0;      /* 进阶版：破一关的最快用时（秒） */
+  loadModeProfile();
 
   function activePlaque() { return plaques.length ? plaques[0] : null; }
   function currentTarget() {
@@ -1459,11 +1828,13 @@
     }
     var picks = [];
     var guard = 0;
-    /* 拼 5 轮之后，字母栏开始随机喂「能和我方字格组词」的字，营长不再是运气 */
-    var feed = runChars.length >= 5 && myCells.some(Boolean);
+    /* 拼满 N 轮之后，字母栏开始随机喂「能和我方字格组词」的字，营长不再是运气；
+       进阶版还会优先补四字成语缺的那个字 */
+    var feed = runChars.length >= CFG.feed.from && myCells.some(Boolean);
     while (picks.length < 2 && guard++ < 80) {
-      if (feed && Math.random() < 0.62) {
-        var fe = wordFeedEntry(picks);
+      if (feed && Math.random() < CFG.feed.word) {
+        var fe = (Math.random() < CFG.feed.idiom) ? idiomFeedEntry(picks) : null;
+        if (!fe) fe = wordFeedEntry(picks);
         if (fe) { picks.push(fe); continue; }
       }
       var wantTri = Math.random() < triRate;
@@ -1486,15 +1857,21 @@
 
     var fresh = [];
     picks.forEach(function (w) {
-      fresh.push({ v: w.s, kind: 's' });
-      if (w.m) fresh.push({ v: w.m, kind: 'm' });
-      fresh.push({ v: w.y, kind: 'y' });
+      /* 三拼的介母和韵母并成一张介韵卡（j + ian），不给 j + i 留岔路 */
+      cardsForWord(w).forEach(function (v) { fresh.push(cardOf(v)); });
     });
     guard = 0;
+    /* 有介韵卡（ian/uan/iao…）在场时，不再放同名单介母 i/u ——
+       否则孩子看到 j + i 就会拐去拼 ji，走不到 jian */
+    var medOnBoard = {};
+    fresh.forEach(function (c) {
+      if (isCompound(c.v)) medOnBoard[COMPOUND[c.v][0]] = true;
+    });
     while (fresh.length < 8 && guard++ < 300) {
       var useS = Math.random() < 0.45;
       var v = useS ? pick(SHENGMU) : pick(YUNMU);
-      fresh.push({ v: v, kind: kindOf(v) });
+      if (medOnBoard[v]) continue;
+      fresh.push(cardOf(v));
     }
     fresh = shuffle(fresh.slice(0, 8));
     fresh.forEach(function (c) {
@@ -1517,7 +1894,7 @@
       ps.forEach(function (pc) {
         if (have.indexOf(pc) >= 0) return;   /* 字格里已经有了，别重喂 */
         if (picks.some(function (p) { return p.c === pc; })) return;
-        var e = sylEntryFor(pc);
+        var e = sylAnyFor(pc);
         if (e) cands.push(e);
       });
     });
@@ -1525,13 +1902,40 @@
     return cands[(Math.random() * cands.length) | 0];
   }
 
+  /* 大将军补给线：字格里已有 2~3 个字属于同一个四字成语时，
+     优先把缺的那个字递上来（缺 1 个 > 缺 2 个） */
+  function idiomFeedEntry(picks) {
+    var have = myCells.filter(Boolean).map(function (c) { return c.ch; });
+    if (have.length < 2) return null;
+    var one = [], two = [];
+    IDIOMS4.forEach(function (w) {
+      var pool = have.slice(), miss = [], hit = 0;
+      for (var i = 0; i < w.length; i++) {
+        var idx = pool.indexOf(w.charAt(i));
+        if (idx >= 0) { pool.splice(idx, 1); hit++; }
+        else miss.push(w.charAt(i));
+      }
+      if (hit < 2 || !miss.length) return;
+      if (miss.length === 1) one.push(miss[0]);
+      else if (miss.length === 2) two.push(miss[0]);
+    });
+    var arr = one.length ? one : two;
+    if (!arr.length) return null;
+    for (var t = 0; t < 14; t++) {
+      var c = arr[(Math.random() * arr.length) | 0];
+      if (picks && picks.some(function (p) { return p.c === c; })) continue;
+      var e = sylAnyFor(c);
+      if (e) return e;
+    }
+    return null;
+  }
+
   /* 保证木牌目标字的字母在场：缺哪张就替换掉一张无关卡
      玩家正在选字母 / 开着选字面板时一律不动格子，记下来等选完再补 */
   function ensureLetters(w) {
     if (sel.length || ladderWord) { pendingEnsure = w; return false; }
-    var need = [w.s];
-    if (w.m) need.push(w.m);
-    need.push(w.y);
+    /* 三拼优先用一张介韵卡（j + ian），而不是 j / i / an 三张 */
+    var need = cardsForWord(w);
     var have = {};
     cards.forEach(function (c) { if (c) have[c.v] = (have[c.v] || 0) + 1; });
     pending.forEach(function (c) { have[c.v] = (have[c.v] || 0) + 1; });
@@ -1546,22 +1950,24 @@
         if (need.indexOf(pending[i].v) < 0) { idx = i; break; }
       }
       if (idx >= 0) {
-        pending[idx] = { v: L, kind: kindOf(L), id: newId() };
+        pending[idx] = cardOf(L);
         return;
       }
+      /* 优先换掉「半截介母」：三拼要用 ian 时，场上的单张 i 就是那条岔路 */
       var cand = [];
       for (var k = 0; k < 8; k++) {
         if (cards[k] && sel.indexOf(k) < 0 && need.indexOf(cards[k].v) < 0) cand.push(k);
       }
       if (cand.length) {
         var kk = pick(cand);
-        cards[kk] = { v: L, kind: kindOf(L), id: newId() };
+        cards[kk] = cardOf(L);
         renderGrid(false);
       } else {
         /* 场上无卡可换：排进待落队列，等空位落下 */
-        pending.push({ v: L, kind: kindOf(L), id: newId() });
+        pending.push(cardOf(L));
       }
     });
+    cleanMedial(w);
     return true;
   }
 
@@ -1573,30 +1979,91 @@
     newWave();
   }
 
-  /* ---------- 节奏档位：默认「慢慢打」，给一二年级留出看清、想清楚的时间 ---------- */
-  var PACE_KEY = 'pzqb_pace';
-  var slowPace = true;
-  try { slowPace = localStorage.getItem(PACE_KEY) !== '0'; } catch (e) { slowPace = true; }
+  /* =====================================================================
+     节奏档：儿童版 / 进阶版
+     一套代码两个版本，所有差异都收在这张表里 ——
+     以后移植微信小游戏，这张表和下面的逻辑可以原样搬走，只换绘制层。
+     ===================================================================== */
+  var MODE_KEY = 'pzqb_mode';
+  var GAME_MODE = 'kids';
+  try { var _m = localStorage.getItem(MODE_KEY); if (_m === 'pro' || _m === 'dian') GAME_MODE = _m; } catch (e) { GAME_MODE = 'kids'; }
+
+  var PRESETS = {
+    kids: {
+      label: '蒙学', tag: '识字启蒙',
+      pace: 1,               /* paceT 的返回值：1 = 原速（慢） */
+      plaqueSlow: 0.62,      /* 木牌再打六二折，慢慢飘过来 */
+      accel: { timeDiv: 90, charDiv: 30, wTime: 0.22, wChar: 0.32, cap: 0.25 },
+      lvBase: function (lv) { return lv <= 5 ? 1 : 1 + Math.min(lv - 5, 10) * 0.012; },
+      skill: { base: 0.88, span: 0.32, from: 6 },
+      wrongMul: 1,           /* 选错不加速木牌：认字阶段不拿速度惩罚孩子 */
+      ladderWait: 1450,      /* 选错后停久一点，把正确的字看清楚 */
+      healEvery: 1,          /* 每破一关补 1 条命 */
+      clock: false,
+      /* 血格与伤害：单位是「分」，3 分 = 1 大格。
+         儿童版维持老手感——单字 1 格、词语 2 格、成语 3 格（一击破关） */
+      hp: { max: 3, small: 1, word: 2, idiom: 3 },
+      /* 组词/成语喂字：拼满 from 轮后开始偏袒，word/idiom 是触发概率 */
+      feed: { from: 5, word: 0.62, idiom: 0.10 },
+      pools: [[0.95, 0.05, 0.00], [0.72, 0.26, 0.02], [0.55, 0.38, 0.07]]
+    },
+    pro: {
+      label: '会试', tag: '竞速',
+      pace: 0.86,
+      plaqueSlow: 1,
+      accel: { timeDiv: 45, charDiv: 18, wTime: 0.42, wChar: 0.55, cap: 0.60 },
+      lvBase: function (lv) { return 1 + Math.min((lv - 1) * 0.045, 0.55); },
+      skill: { base: 0.95, span: 0.25, from: 4 },
+      wrongMul: 1.35,        /* 选错木牌快 35%：竞速版要罚 */
+      ladderWait: 900,
+      healEvery: 1,          /* 破一关补 1 格血（封顶 3 格）：长局靠这个撑住士气 */
+      clock: true,           /* HUD 显示本关计时 */
+      /* 进阶版：3 大格 = 45 分（一格 15 分）。
+         小兵 3 分 → 5 个打掉一格；营长 5 分 → 3 个打掉一格；
+         大将军 15 分 → 一次掉一格。一关按单字算要打 15 次。 */
+      hp: { max: 45, small: 3, word: 5, idiom: 15 },
+      /* 词/成语大幅加权：第 1 关就喂，喂词概率拉满，近一半机会递成语缺字 */
+      feed: { from: 1, word: 0.88, idiom: 0.50 },
+      pools: [[0.55, 0.35, 0.10], [0.30, 0.42, 0.28], [0.18, 0.34, 0.48], [0.08, 0.22, 0.70]]
+    },
+    /* 殿试：原"进阶版"首发的硬核参数原样保留——破关不补血、提速更陡。
+       给真正的高手；能连过十关的都算登科。 */
+    dian: {
+      label: '殿试', tag: '极限',
+      pace: 0.86,
+      plaqueSlow: 1,
+      accel: { timeDiv: 45, charDiv: 18, wTime: 0.42, wChar: 0.55, cap: 0.85 },
+      lvBase: function (lv) { return 1 + Math.min((lv - 1) * 0.065, 0.75); },
+      skill: { base: 0.95, span: 0.25, from: 4 },
+      wrongMul: 1.35,        /* 选错木牌快 35% */
+      ladderWait: 900,
+      healEvery: 99,         /* 不补血，全靠自己守住 */
+      clock: true,
+      hp: { max: 45, small: 3, word: 5, idiom: 15 },
+      feed: { from: 1, word: 0.88, idiom: 0.50 },
+      pools: [[0.55, 0.35, 0.10], [0.30, 0.42, 0.28], [0.18, 0.34, 0.48], [0.08, 0.22, 0.70]]
+    }
+  };
+  var CFG = PRESETS[GAME_MODE];
+  function isKids() { return GAME_MODE === 'kids'; }
   /* 时间类参数乘这个数（越大越慢） */
-  function paceT(v) { return slowPace ? v : 1; }
+  function paceT(v) { return isKids() ? v : CFG.pace; }
 
   /* 局内加速 */
   function accelF() {
-    var byTime = Math.min(st.elapsed / 90, 1);
-    var byChars = Math.min(st.score / 30, 1);
-    /* 封顶：慢速档最多 ×1.25，正常档 ×1.54 —— 后期也不会失控 */
-    var cap = slowPace ? 0.25 : 0.54;
-    return 1 + Math.min(byTime * 0.22 + byChars * 0.32, cap);
+    var a = CFG.accel;
+    var byTime = Math.min(st.elapsed / a.timeDiv, 1);
+    var byChars = Math.min(st.score / a.charDiv, 1);
+    return 1 + Math.min(byTime * a.wTime + byChars * a.wChar, a.cap);
   }
   function dropInterval() { return 0.42 / accelF(); }
 
-  /* 关卡节奏：1~5 关固定最慢，让孩子先把"看调、拼字母、点字"摸熟；
-     第 6 关起不再按关卡号硬加速，改由玩家自己的手速决定对手强度。 */
+  /* 关卡节奏：儿童版 1~5 关固定最慢，之后由手速决定；
+     进阶版从第 1 关就按关卡爬升，第 2 关起再叠手速。 */
   function levelSpeedMul() {
-    if (st.level <= 5) return 1;
-    /* 长局仍然留一点点爬升，避免高手永远碾压 */
-    var creep = 1 + Math.min(st.level - 5, 10) * 0.012;
-    return matchSpeedMul() * creep;
+    var base = CFG.lvBase(st.level);
+    if (st.level < CFG.skill.from) return base;
+    return base * matchSpeedMul();
   }
   function levelSpawnMul() { return 1 / levelSpeedMul(); }
 
@@ -1628,13 +2095,33 @@
     skillVal = Math.min(Math.max(skillVal - v, 0), 1);
   }
   function skillNow() { return skillVal < 0 ? 0.5 : skillVal; }
-  /* 木牌/出牌速度倍率：慢手 0.88 → 快手 1.20 */
-  function matchSpeedMul() { return 0.88 + 0.32 * skillNow(); }
+  /* 绝对节奏标定：以「玩家平均多少秒拼掉一个字」为尺子。
+     PACE_BASE 是标准档（先用成人实测常见值 2.4 秒/字），
+     玩家比标准慢就把牌整体放慢，比标准快就收紧。
+     这样每个人的节奏都是相对同一把尺子定出来的，不是拍脑袋定的常数。 */
+  var PACE_BASE = 3.2;   /* 实测标定：用户 2026-11-13 结算页 平均 3.2 秒/字，作为标准档 */
+  function paceFit() {
+    if (isKids()) return 1;                       /* 蒙学另有 paceT，不参与标定 */
+    if (st.score < 3) return 1;                   /* 开局样本太少，先按标准档 */
+    var f = (st.elapsed / Math.max(1, st.score)) / PACE_BASE;
+    if (GAME_MODE === 'pro') return clamp(f, 0.72, 1.9);
+    /* 殿试：只在硬核边界内微调（最紧 0.85、最松 1.3）。
+       比标准慢太多的玩家最多松 30%，仍然远难于会试；
+       上架后按全服阵亡数据再回调这一段（见 HUMAN_FLOOR 注释）。 */
+    return clamp(f, 0.85, 1.3);
+  }
+  /* 木牌/出牌速度倍率：儿童版 0.88~1.20（差半步），进阶版 0.92~1.42（追着你） */
+  function matchSpeedMul() { return CFG.skill.base + CFG.skill.span * skillNow(); }
   function matchLabel() {
     var s = skillNow();
-    if (s >= 0.62) return '对手·咬得紧';
-    if (s >= 0.34) return '对手·正合手';
-    return '对手·放慢了';
+    if (isKids()) {
+      if (s >= 0.62) return '对手·咬得紧';
+      if (s >= 0.34) return '对手·正合手';
+      return '对手·放慢了';
+    }
+    if (s >= 0.62) return '对手·追着你打';
+    if (s >= 0.34) return '对手·咬得紧';
+    return '对手·慢半拍';
   }
 
   /* ---------- 补字母：只要空格就立刻补满，绝不等 ---------- */
@@ -1666,14 +2153,13 @@
     for (var i = 0; i < 8; i++) { if (!cards[i]) empties.push(i); }
     if (!empties.length) return [];
 
-    /* 组词喂字：拼满 5 轮后，有机会把一整个「能和我方字格组词」的音节铺上桌 */
+    /* 组词/成语喂字：拼够轮数后，有机会把一整个「能凑词或凑成语」的音节铺上桌 */
     var feedLetters = null;
-    if (runChars.length >= 5 && myCells.some(Boolean) && Math.random() < 0.62) {
-      var fe = wordFeedEntry([]);
+    if (runChars.length >= CFG.feed.from && myCells.some(Boolean) && Math.random() < CFG.feed.word) {
+      var fe = (Math.random() < CFG.feed.idiom) ? idiomFeedEntry([]) : null;
+      if (!fe) fe = wordFeedEntry([]);
       if (fe) {
-        feedLetters = [fe.s];
-        if (fe.m) feedLetters.push(fe.m);
-        feedLetters.push(fe.y);
+        feedLetters = cardsForWord(fe);
         var onBoard = [];
         for (var i0 = 0; i0 < 8; i0++) if (cards[i0]) onBoard.push(cards[i0].v);
         feedLetters = feedLetters.filter(function (x) { return onBoard.indexOf(x) < 0; });
@@ -1682,7 +2168,13 @@
       }
     }
 
+    /* 同样：场上有介韵卡，就别再补它的单介母 */
     var feedN = feedLetters ? feedLetters.length : 0;
+    var medUsed = {};
+    for (var mi = 0; mi < 8; mi++) {
+      var mc = cards[mi];
+      if (mc && isCompound(mc.v)) medUsed[COMPOUND[mc.v][0]] = true;
+    }
     empties.forEach(function (slot, idx) {
       var v = null;
       if (idx < feedN) {
@@ -1696,9 +2188,7 @@
           var base = cards[pick(idxs)].v;
           var mate = [];
           DB.forEach(function (w) {
-            var need = [w.s];
-            if (w.m) need.push(w.m);
-            need.push(w.y);
+            var need = cardsForWord(w);
             if (need.indexOf(base) < 0) return;
             need.forEach(function (x) { if (x !== base && mate.indexOf(x) < 0) mate.push(x); });
           });
@@ -1706,24 +2196,57 @@
         }
       }
       if (!v) v = Math.random() < 0.45 ? pick(SHENGMU) : pick(YUNMU);
-      cards[slot] = { v: v, kind: kindOf(v), id: newId() };
+      if (medUsed[v]) v = pick(SHENGMU);   /* 别补单介母，绕开 ji 这种半截音节 */
+      cards[slot] = cardOf(v);
     });
 
     var tgt = currentTarget();
     if (tgt) ensureLetters(tgt);
+    cleanMedial();
     return empties;
+  }
+
+  /* 场上有 ian / uan 这类介韵卡时，把它的单介母（i / u）清走：
+     目标音节真要用这个介母（比如目标是 bi）就留着，别把路堵死。 */
+  function cleanMedial(t) {
+    var meds = {};
+    for (var i = 0; i < 8; i++) {
+      var c = cards[i];
+      if (c && isCompound(c.v)) meds[COMPOUND[c.v][0]] = true;
+    }
+    if (!Object.keys(meds).length) return false;
+    var tgt = t || currentTarget();
+    var needNow = tgt ? cardsForWord(tgt) : [];
+    var changed = false;
+    for (var k = 0; k < 8; k++) {
+      var c2 = cards[k];
+      if (!c2 || !meds[c2.v] || sel.indexOf(k) >= 0) continue;
+      if (needNow.indexOf(c2.v) >= 0) continue;
+      cards[k] = cardOf(pick(SHENGMU));
+      changed = true;
+    }
+    if (changed) renderGrid(false);
+    return changed;
   }
 
   function hasSolution() {
     var idx = [];
     for (var i = 0; i < 8; i++) if (cards[i]) idx.push(i);
+    /* 介韵卡会展开成两段，所以「两张卡」也可能凑出三拼音节 */
+    function flatOf(i) { return cards[i].parts || partsOf(cards[i].v); }
     for (var a = 0; a < idx.length; a++) {
       for (var b = a + 1; b < idx.length; b++) {
-        var k2 = [cards[idx[a]].v, cards[idx[b]].v].sort().join('|');
-        if (KEYMAP[k2] || HOMO[k2]) return true;
+        var f2 = flatOf(idx[a]).concat(flatOf(idx[b]));
+        if (f2.length <= 3) {
+          var k2 = f2.sort().join('|');
+          if (KEYMAP[k2] || HOMO[k2]) return true;
+        }
         for (var c = b + 1; c < idx.length; c++) {
-          var k3 = [cards[idx[a]].v, cards[idx[b]].v, cards[idx[c]].v].sort().join('|');
-          if (KEYMAP[k3] || HOMO[k3]) return true;
+          var f3 = flatOf(idx[a]).concat(flatOf(idx[b]), flatOf(idx[c]));
+          if (f3.length <= 3) {
+            var k3 = f3.sort().join('|');
+            if (KEYMAP[k3] || HOMO[k3]) return true;
+          }
         }
       }
     }
@@ -1736,9 +2259,7 @@
     for (var i = 0; i < 8; i++) { if (cards[i]) have[cards[i].v] = (have[cards[i].v] || 0) + 1; }
     var cand = [];
     DB.forEach(function (w) {
-      var need = [w.s];
-      if (w.m) need.push(w.m);
-      need.push(w.y);
+      var need = cardsForWord(w);
       var miss = need.filter(function (x) { return !have[x]; });
       if (miss.length === 1) cand.push(miss[0]);
     });
@@ -1748,7 +2269,7 @@
     if (!pool.length) return false;
     var slot = pick(pool);
     var v = pick(cand);
-    cards[slot] = { v: v, kind: kindOf(v), id: newId() };
+    cards[slot] = cardOf(v);
     renderGrid(false);
     markDrop([slot]);
     return true;
@@ -1758,6 +2279,7 @@
     if (pending.length) return;
     var tgt = currentTarget();
     if (tgt) ensureLetters(tgt);
+    cleanMedial();
     if (hasSolution()) return;
     if (forcePair()) return;
     var empty = 0;
@@ -1790,14 +2312,15 @@
         cell.classList.add(c.kind);
         if (anim) cell.classList.add('drop');
         if (c.v.length === 2) cell.classList.add('two');
-        if (c.v.length >= 3) cell.classList.add('three');
+        if (c.v.length === 3) cell.classList.add('three');
+        if (c.v.length >= 4) cell.classList.add('four');
         var lb = document.createElement('span');
         lb.className = 'lb';
         lb.textContent = c.v;
         cell.appendChild(lb);
         var kx = document.createElement('span');
         kx.className = 'kx';
-        kx.textContent = c.kind === 's' ? '声' : (c.kind === 'm' ? '介' : '韵');
+        kx.textContent = c.kind === 's' ? '声' : (c.kind === 'm' ? '介' : (c.kind === 'c' ? '介韵' : '韵'));
         cell.appendChild(kx);
         if (sel.indexOf(i) >= 0) cell.classList.add('sel');
         (function (idx) {
@@ -1875,7 +2398,16 @@
       return;
     }
     var vals = sel.map(function (i) { return cards[i].v; });
-    pvEl.innerHTML = vals.join(' <b>+</b> ');
+    /* 能拼成音节时顺手把整音节写出来：j + ian ＝ jian，孩子看得见“合起来是什么” */
+    var flat = selFlat();
+    var key = flatKey(flat);
+    var syl = '';
+    if (flat.length >= 2) {
+      var ww = KEYMAP[key];
+      if (ww) syl = ww.s + (ww.m || '') + ww.y;
+      else if (HOMO[key]) { var pw = pseudoWord(flat); if (pw) syl = pw.s + (pw.m || '') + pw.y; }
+    }
+    pvEl.innerHTML = vals.join(' <b>+</b> ') + (syl ? ' <b>＝</b> ' + syl : '');
     pvEl.classList.add('on');
   }
 
@@ -1899,15 +2431,16 @@
   }
 
   /* 从选中的字母反推音节结构（声母+介母+韵母），
-     用于主字库没收录、但拼音合法的音节（如 w+a、l+a） */
-  function pseudoWord(vals) {
+     用于主字库没收录、但拼音合法的音节（如 w+a、l+a）。
+     传进来的是「展平后的真实字母」：j + ian → ['j','i','an'] */
+  function pseudoWord(flat) {
     var s = null, m = null, rest = [];
-    vals.forEach(function (v) {
+    flat.forEach(function (v) {
       if (!s && kindOf(v) === 's') { s = v; } else { rest.push(v); }
     });
     if (!s || !rest.length) return null;
     var y;
-    if (vals.length === 3) {
+    if (flat.length === 3) {
       var mi = -1;
       for (var i = 0; i < rest.length; i++) { if (kindOf(rest[i]) === 'm') { mi = i; break; } }
       if (mi < 0) return null;
@@ -1917,10 +2450,10 @@
     } else {
       y = rest[0];
     }
-    var parts = [s];
-    if (m) parts.push(m);
-    parts.push(y);
-    var key = parts.sort().join('|');
+    var ps = [s];
+    if (m) ps.push(m);
+    ps.push(y);
+    var key = ps.sort().join('|');
     if (!HOMO[key]) return null;
     var rep = HOMO[key][0];
     var w = { c: rep.c, p: rep.p, s: s, y: y };
@@ -1928,32 +2461,49 @@
     return w;
   }
 
-  /* 场上（含敌将正在拼的）有没有木牌，正好等着「已选的两个字母 + 再来一个」的三拼 */
+  /* 选中卡片的真实字母（介韵卡会展开成两段） */
+  function selFlat() {
+    var out = [];
+    sel.forEach(function (i) {
+      var c = cards[i];
+      if (c) out = out.concat(c.parts || partsOf(c.v));
+    });
+    return out;
+  }
+  function flatKey(flat) { return flat.slice().sort().join('|'); }
+
+  /* 场上（含敌将正在拼的）有没有木牌，正好等着「已选的两张 + 再来一张」 */
   function waiting3() {
     if (sel.length !== 2) return false;
     var list = [];
     plaques.forEach(function (q) { if (!q.dying) list.push(q.target); });
     if (foe && foe.state === 'spelling' && foe.target) list.push(foe.target);
-    var a = cards[sel[0]] ? cards[sel[0]].v : null;
-    var b = cards[sel[1]] ? cards[sel[1]].v : null;
-    if (!a || !b) return false;
+    var flat = selFlat();
+    if (flat.length >= 3) return false;   /* 已经是三段的卡，不用再等 */
     return list.some(function (t) {
       var need = [t.s, t.m, t.y].filter(Boolean);
       if (need.length !== 3) return false;
-      var ia = need.indexOf(a), ib = need.indexOf(b);
-      if (ia < 0 || ib < 0) return false;
-      return a !== b || ia !== ib;
+      if (flat.length + 1 !== need.length) return false;
+      /* 已选字母都在目标音节里，且不重复占用同一段 */
+      var used = need.slice();
+      for (var i = 0; i < flat.length; i++) {
+        var k = used.indexOf(flat[i]);
+        if (k < 0) return false;
+        used.splice(k, 1);
+      }
+      return true;
     });
   }
 
   function trySolve() {
-    var vals = sel.map(function (i) { return cards[i].v; }).slice().sort();
-    var key = vals.join('|');
+    var picked = sel.map(function (i) { return cards[i]; }).filter(Boolean);
+    var flat = selFlat();
+    var key = flatKey(flat);
     var w = KEYMAP[key];
 
-    if (w && vals.length === (w.m ? 3 : 2)) {
-      /* 两张字母若只是顺路拼了个别的音，而木牌在等它们的三拼，先别弹面板 */
-      if (vals.length === 2 && !plaqueFor(key) && waiting3()) {
+    if (w && flat.length === (w.m ? 3 : 2)) {
+      /* 两张卡若只是顺路拼了个别的音，而木牌在等它们的三拼，先别弹面板 */
+      if (flat.length === 2 && !plaqueFor(key) && waiting3()) {
         tipEl.textContent = '木牌要的是三拼音节 —— 再选一个字母';
         return;
       }
@@ -1962,9 +2512,9 @@
     }
     /* 主字库没收录、但拼音合法的音节也能拼（任意能组成汉字的拼音） */
     if (!w && HOMO[key]) {
-      var pw = pseudoWord(vals);
+      var pw = pseudoWord(flat);
       if (pw) {
-        if (vals.length === 2 && !plaqueFor(key) && waiting3()) {
+        if (flat.length === 2 && !plaqueFor(key) && waiting3()) {
           tipEl.textContent = '木牌要的是三拼音节 —— 再选一个字母';
           return;
         }
@@ -1976,7 +2526,7 @@
     if (HOMO_ALL[key] && !HOMO[key]) {
       /* 不依赖当前档字库，直接按字母类型拼出音节（b + in → bin） */
       var lsm = null, lmed = null, lfin = null;
-      vals.forEach(function (v) {
+      flat.forEach(function (v) {
         var kd = kindOf(v);
         if (!lsm && kd === 's') lsm = v;
         else if (!lmed && kd === 'm') lmed = v;
@@ -2155,7 +2705,7 @@
       btn.classList.add('bad');
       st.lock = true;
       missT = 0.5;
-      pl.spMul = Math.min((pl.spMul || 1) * 1.25, 1.8);
+      if (CFG.wrongMul > 1) pl.spMul = Math.min((pl.spMul || 1) * CFG.wrongMul, 2.2);
 
       var wrongTone = toneOf(o.p) !== toneOf(target.p);
       if (wrongTone) {
@@ -2177,7 +2727,7 @@
         closeLadder();
         st.lock = false;
         if (st.mode === MODE.PLAY) tipEl.textContent = '字母拼出音节 · 声调对上才是那个字';
-      }, 1100);
+      }, CFG.ladderWait);
       return;
     }
 
@@ -2234,7 +2784,7 @@
       var sh = {
         x: zyX + 18, y: fieldY - 28, t: 0, dur: 0.46,
         ch: ch, dmg: dmg, plaque: hitPlaque,
-        tx: mid ? W / 2 : foeX, ty: mid ? fieldY - 74 : fieldY - 64,
+        tx: mid ? W / 2 : foeX, ty: mid ? fieldY - 62 : fieldY - 42,
         foeWord: mid ? foe.target.c : null,
         done: false, seed: Math.random() * 10
       };
@@ -2306,11 +2856,11 @@
     return hit;
   }
 
-  /* 字将出战：词语=营长（2 伤）、成语=大将军（3 伤，一击定胜负） */
+  /* 字将出战：词语=营长、成语=大将军；伤害按版本配置的「分」结算 */
   function fireGeneral(word, used) {
     var isIdiom = word.length >= 4;
     var rank = isIdiom ? '大将军' : '营长';
-    var dmg = isIdiom ? 3 : 2;
+    var dmg = isIdiom ? CFG.hp.idiom : CFG.hp.word;
 
     SND.general();
     st.gold = 0.75;
@@ -2343,19 +2893,19 @@
       generalStrike();
       /* 中间对撞：敌将当场挨这一下 */
       clashAt(rank, word, dmg, foeWord);
-      damageFoe(dmg, foeX, fieldY - 60, true);
-      tipEl.textContent = rank + '出阵：' + word + ' · ' + dmg + ' 点伤害';
+      damageFoe(dmg, foeX, fieldY - 44, true);
+      tipEl.textContent = rank + '出阵：' + word + ' · 敌将掉 ' + dmgText(dmg);
     }, 260);
   }
 
   /* 中间对撞：我方字从左边撞上去，敌将的字在中间碎掉 */
   function clashAt(rank, word, dmg, foeWord) {
     clashes.push({
-      x: W / 2, y: fieldY - 74, word: word, rank: rank, dmg: dmg, foeWord: foeWord || null,
+      x: W / 2, y: fieldY - 62, word: word, rank: rank, dmg: dmg, foeWord: foeWord || null,
       t: 0, dur: 0.85, seed: Math.random() * 10
     });
-    burst(W / 2, fieldY - 74, 26, 'rgba(198,164,104,0.85)');
-    burst(W / 2, fieldY - 74, 14, 'rgba(184,69,58,0.75)');
+    burst(W / 2, fieldY - 62, 26, 'rgba(198,164,104,0.85)');
+    burst(W / 2, fieldY - 62, 14, 'rgba(184,69,58,0.75)');
   }
 
   /* 字将出手：烧光木牌、打断敌将拼字、把他往后逼。
@@ -2364,7 +2914,7 @@
     if (!foe || st.mode !== MODE.PLAY) return;
     foe.hitT = 0.4;
     st.shake = Math.max(st.shake, 0.5);
-    burnBurst(foeX - 14, fieldY - 58);
+    burnBurst(foeX - 14, fieldY - 44);
     if (foe.state === 'spelling') {
       foe.state = 'idle';
       foe.target = null;
@@ -2379,11 +2929,30 @@
   /* =====================================================================
      九、敌将与木牌
      ===================================================================== */
-  /* 双方都是 3 点血：谁先被打满 3 点伤害，谁就倒下。
-     单字（小兵）1 伤 · 词语（营长）2 伤 · 成语（大将军）3 伤 */
+  /* 每关敌将 3 大格血。内部用「分」记账：
+     儿童版一格 = 1 分（单字 1 分直接掉一格）；
+     进阶版一格 = 5 分（5 个小兵 / 3 个营长 / 1 个大将军）。 */
   var HP_MAX = 3;
   function hitsNeeded() {
-    return HP_MAX;
+    return CFG.hp.max;
+  }
+  function slotUnit() { return CFG.hp.max / HP_MAX; }      /* 一格 = 多少分 */
+  function slotsLeft(v) { return clamp((v || 0) / slotUnit(), 0, HP_MAX); }
+  function fmtSlots(v) {
+    var s = slotsLeft(v), r = Math.round(s * 10) / 10;
+    return r % 1 === 0 ? String(r) : r.toFixed(1);
+  }
+  /* 伤害用「格」讲给玩家听：1 格 / 1/3 格 / 1/5 格 */
+  function dmgText(d) {
+    var s = d / slotUnit();
+    if (Math.abs(s - 1) < 0.001) return '1 格';
+    if (Math.abs(s - 2) < 0.001) return '2 格';
+    if (Math.abs(s - 3) < 0.001) return '3 格';
+    if (Math.abs(s - 1 / 2) < 0.001) return '1/2 格';
+    if (Math.abs(s - 1 / 3) < 0.001) return '1/3 格';
+    if (Math.abs(s - 1 / 4) < 0.001) return '1/4 格';
+    if (Math.abs(s - 1 / 5) < 0.001) return '1/5 格';
+    return (Math.round(s * 10) / 10) + ' 格';
   }
 
   /* =====================================================
@@ -2399,10 +2968,10 @@
     var p = foeProgress();
     return p >= 0.72 ? 3 : (p >= 0.36 ? 2 : 1);
   }
-  /* 出牌间隔系数：第 1 波 ×1.7 → 第 3 波 ×0.85（慢速档） */
+  /* 出牌间隔系数：慢档第 1 波 ×1.7 → 第 3 波 ×0.85；进阶版收得更紧 */
   function spawnRamp(p) {
-    if (slowPace) return 1.7 - 0.85 * p;
-    return 1.35 - 0.45 * p;
+    if (isKids()) return 1.7 - 0.85 * p;
+    return 1.35 - 0.55 * p;
   }
   /* 木牌速度系数：第 1 波 ×0.8 → 第 3 波 ×1.25 */
   function speedRamp(p) {
@@ -2417,9 +2986,10 @@
   }
 
   function spawnFoe() {
-    var hpBase = hitsNeeded();   /* 单位是「次」，不是点数 */
+    var hpBase = hitsNeeded();   /* 单位是「分」：儿童版 3 分、进阶版 15 分（3 大格） */
     foe = {
-      hp: hpBase, maxHp: hpBase, waveShown: 1,
+      hero: pickFoeHero(),
+      hp: hpBase, maxHp: hpBase, waveShown: 1, lowWarned: false,
       state: 'idle', idleT: 2.2 * paceT(2.4) / levelSpeedMul(), spellT: 0, spellDur: 3.6,
       target: null, grid: [], surge: 0, hitT: 0, kickT: 0
     };
@@ -2449,7 +3019,12 @@
         foe.kickT = 0.36;
         foe.state = 'idle';
         var mercy = alivePlaques() >= 2 ? 1.9 : 1;
-        foe.idleT = rand(1.6, 2.6) / accelF() * paceT(2.6) * spawnRamp(foeProgress()) * mercy * levelSpawnMul();
+        foe.idleT = rand(1.6, 2.6) / accelF() * paceT(2.6) * spawnRamp(foeProgress()) * mercy * levelSpawnMul() * paceFit();
+        /* 人体极限护栏（殿试）：视觉选择反应约 0.3~0.5 秒 + 拼音认读
+           约 0.3~0.4 秒 + 点击确认约 0.2 秒。两块牌的间隔低于 0.9 秒
+           就不再是"难"，而是生理上不可能——殿试最快只压到这个临界点。
+           上架后用全服匿名数据（平均秒/字、阵亡关卡）回调这个下限。 */
+        if (GAME_MODE === 'dian') foe.idleT = Math.max(foe.idleT, 0.9);
       }
     }
   }
@@ -2460,9 +3035,9 @@
     spawnTotal++;
     var boss = (st.level % 5 === 0) || foe.surge > 0;
     if (foe.surge > 0) foe.surge--;
-    var sp = (19 + Math.min(st.level, 10) * 1.5) * (boss ? 0.85 : 1) * paceT(1) * (slowPace ? 0.62 : 1) * speedRamp(foeProgress()) * levelSpeedMul();
+    var sp = (19 + Math.min(st.level, 10) * 1.5) * (boss ? 0.85 : 1) * paceT(1) * CFG.plaqueSlow * speedRamp(foeProgress()) * levelSpeedMul() / paceFit();
     plaques.push({
-      x: W + 46, y: fieldY - 42, target: w,
+      x: W + 46, y: fieldY - 34, target: w,
       hp: boss ? 2 : 1, maxHp: boss ? 2 : 1,
       sp: sp, spMul: 1, seed: Math.random() * 10, boss: boss, hitT: 0, burnT: 0, scorch: 0
     });
@@ -2503,6 +3078,7 @@
 
   function damageFoe(dmg, x, y, isWord) {
     if (!foe || st.mode !== MODE.PLAY || st.clearing) return;
+    var slotsBefore = Math.ceil(Math.max(0, foe.hp) / slotUnit());
     foe.hp -= dmg;
     /* 换波：敌将提速前先顿一拍，给孩子一个可感知的节奏点 */
     var wv = waveOf();
@@ -2526,13 +3102,23 @@
       }
     }
     if (foe.hp <= 0) { clearLevel(); return; }
-    /* 伤害落地的瞬间就刷新 HUD 血量：孩子要亲眼看着 3/3 → 2/3 → 1/3 */
+    /* 压制回气（仅进阶版）：打掉敌将一整格血，自己回 1 点血，封顶 3 格。
+       长局里"打得好就回血"，让玩家能一直撑下去，而不是漏三次就整局结束 */
+    var slotsNow = Math.ceil(foe.hp / slotUnit());
+    if (GAME_MODE === 'pro' && slotsNow < slotsBefore && st.hearts < 3) {
+      st.hearts++;
+      tipEl.textContent = '压 制 回 气 · 补 回 1 格 血';
+      burst(guardX, fieldY - 34, 14, 'rgba(78,122,90,0.55)');
+    }
+    /* 伤害落地的瞬间就刷新 HUD 血量：玩家要亲眼看着格子被一点点打空 */
     updateHud();
-    if (foe.hp === 1 && !st.clearing) {
-      banner('敌 将 只 剩 一 点 血', '再拼对一个字就赢', 'win');
+    var sl = slotsLeft(foe.hp);
+    if (sl > 0 && sl <= 1 && !foe.lowWarned) {
+      foe.lowWarned = true;
+      banner('敌 将 只 剩 一 格 血', '再拼满这一格就赢', 'win');
       SND.combo(10);
     } else if (!isWord) {
-      tipEl.textContent = '打中！敌方还剩 ' + foe.hp + ' 点血';
+      tipEl.textContent = '打中！敌将还剩 ' + fmtSlots(foe.hp) + ' 格血';
     }
   }
 
@@ -2561,47 +3147,80 @@
 
     st.gold = 1;
     st.shake = Math.max(st.shake, 0.55);
-    burst(foeX, fieldY - 58, 34, 'rgba(198,164,104,0.8)');
-    burst(foeX, fieldY - 44, 18, 'rgba(184,69,58,0.55)');
+    burst(foeX, fieldY - 44, 34, 'rgba(198,164,104,0.8)');
+    burst(foeX, fieldY - 32, 18, 'rgba(184,69,58,0.55)');
 
-    /* 一场胜利 = 一个连胜，满 5 场封"常胜将军" */
+    /* 一场胜利 = 一个连胜，满 5 场封"常胜将军"；成绩按版本分开记 */
     var streak = lvCleared;
     st.streak = streak;
     if (streak > st.bestStreak) {
       st.bestStreak = streak;
-      try { localStorage.setItem('pzqb_beststreak', String(streak)); } catch (e) {}
+      try { localStorage.setItem(saveKey('pzqb_beststreak'), String(streak)); } catch (e) {}
     }
     var gotTitle = false;
     if (streak >= 5 && !st.title) {
       st.title = '常胜将军';
       gotTitle = true;
       st.gold = 1;
-      try { localStorage.setItem('pzqb_title', st.title); } catch (e) {}
+      try { localStorage.setItem(saveKey('pzqb_title'), st.title); } catch (e) {}
+    }
+
+    /* 本关用时：进阶版的核心数字，破最快纪录要当场喊出来 */
+    var lvT = st.levelT;
+    st.lastT = lvT;
+    st.levelT = 0;
+    var newTimeRec = false;
+    if (CFG.clock && lvT > 3 && (!bestTime || lvT < bestTime)) {
+      bestTime = lvT;
+      newTimeRec = true;
+      try { localStorage.setItem(saveKey('pzqb_besttime'), String(bestTime)); } catch (e) {}
     }
 
     st.level = lvCleared + 1;
+    recordBestLv(st.level);   /* 每打进一个新关卡就记下里程碑 */
     rebuildTier(st.level);
+    /* 每 20 关升一级军阶：20 伍长 / 40 百户 / 60 千户 / 80 将军 */
+    var rankUp = troopRank(st.level) > troopRank(lvCleared);
+    st.rankUp = rankUp;
+
+    /* 儿童版每破一关补 1 条命（认字阶段先护住成就感）；
+       进阶版也补 1 格：不补血的长局只会耗掉士气，练不出手速 */
+    var healed = false;
+    if (st.hearts < 3 && lvCleared % CFG.healEvery === 0 && CFG.healEvery <= 3) {
+      st.hearts++;
+      healed = true;
+    }
+    st.healed = healed;
+    saveRun();   /* 破关即存进度：下一关、当前血量、连胜，随时可续 */
 
     var word = PRAISE[(Math.random() * PRAISE.length) | 0];
-    var sub = '连胜 ' + streak + ' 场 · ' + (st.hearts >= 3 ? '无伤' : '还剩 ' + st.hearts + ' 血');
-    banner(gotTitle ? '常 胜 将 军' : '第 ' + streak + ' 关 · 胜',
-      gotTitle ? ('连 胜 五 场 · ' + word) : sub, 'win');
+    var sub;
+    if (newTimeRec) sub = '最快一关 · ' + lvT.toFixed(1) + ' 秒';
+    else if (CFG.clock) sub = '这一关 ' + lvT.toFixed(1) + ' 秒 · 平均 ' + (st.elapsed / Math.max(1, st.score)).toFixed(1) + ' 秒/字' + (healed ? ' · 补回 1 格血' : '');
+    else sub = '连胜 ' + streak + ' 场 · ' + (healed ? '补回 1 条命' : (st.hearts >= 3 ? '无伤' : '还剩 ' + st.hearts + ' 格血'));
+    var winMain = rankUp ? '升 任 ' + troopName(st.level)
+      : (gotTitle ? '常 胜 将 军' : '第 ' + streak + ' 关 · 胜');
+    var winSub = rankUp ? ('连 胜 ' + streak + ' 场 · 甲 胄 加 身')
+      : (gotTitle ? ('连 胜 五 场 · ' + word) : sub);
+    banner(winMain, winSub, 'win');
     SND.clear();
-    if (gotTitle) setTimeout(function () { SND.general(); }, 320);
+    if (gotTitle || rankUp) setTimeout(function () { SND.general(); }, 320);
     popScore();
     updateHud();
 
     setTimeout(function () {
       st.clearing = false;
       showClearScreen(lvCleared, gotTitle, prevTier);
-    }, gotTitle ? 1700 : 1150);
+    }, (gotTitle || rankUp) ? 1780 : 1150);
   }
 
   function nextLevel(prevTier) {
     if (!foe || st.mode !== MODE.PLAY) return;
     st.levelStart = runChars.length;
+    st.levelT = 0;
     foe.hp = hitsNeeded();
     foe.maxHp = foe.hp;
+    foe.lowWarned = false;
     foe.grid = [];
     foe.surge = 0;
     foe.state = 'idle';
@@ -2609,8 +3228,15 @@
     foe.waveShown = 1;
     foe.deadT = 0;
     foe.fadeT = 0.5;
+    foe.hero = pickFoeHero();   /* 每关换一位敌将 */
     renderFoeGrid(null);
     var newTier = tierOf(st.level);
+    if (st.rankUp) {
+      st.rankUp = false;
+      tipEl.textContent = '第 ' + st.level + ' 关！升任' + troopName(st.level) + '，甲胄加身';
+      updateHud();
+      return;
+    }
     if (st.level === 6) {
       tipEl.textContent = '第 6 关！之后对手照你的手速配：' + matchLabel().replace('对手·', '');
     } else if (newTier !== prevTier) {
@@ -2649,9 +3275,9 @@
     SND.hurt();
     if (st.hearts === 1) {
       setTimeout(function () { if (st.mode === MODE.PLAY) SND.lastLife(); }, 180);
-      banner('最 后 一 点 血', '木牌上写什么，看清再拼', 'bad');
+      banner('最 后 一 格 血', '木牌上写什么，看清再拼', 'bad');
     } else {
-      banner(dmg > 1 ? '令 牌 撞 城' : '木 牌 进 城', '还剩 ' + st.hearts + ' 点血', 'bad');
+      banner(dmg > 1 ? '令 牌 撞 城' : '木 牌 进 城', '还剩 ' + st.hearts + ' 格血', 'bad');
     }
     if (foe) foe.idleT = Math.max(foe.idleT, 3.5 * paceT(2));
     tipEl.textContent = '木牌进城了！守住下一块';
@@ -2678,6 +3304,15 @@
   var charlistEl = document.getElementById('charlist');
   var HEART_SVG = '<svg class="heart" viewBox="0 0 24 22"><path d="M12 21s-9-5.7-9-12A5 5 0 0 1 12 6a5 5 0 0 1 9 3c0 6.3-9 12-9 12z" fill="#b8453a"/></svg>';
 
+  function metaText() {
+    if (st.clearing) return '破 关 · 下一阵';
+    if (st.mode === MODE.INTER) return '第 ' + st.level + ' 关 · 等 候 出 战';
+    var clock = (CFG.clock && st.mode === MODE.PLAY) ? ' · ' + st.levelT.toFixed(1) + 's' : '';
+    if (!foe) return '第 ' + st.level + ' 关' + clock;
+    return '第 ' + st.level + ' 关 · ' + troopName(st.level) + ' · 敌将 ' + fmtSlots(foe.hp) + '/' + HP_MAX +
+      ' 格 · 第' + waveOf() + '波' + clock;
+  }
+
   function updateHud() {
     var h = '';
     for (var i = 0; i < 3; i++) {
@@ -2685,18 +3320,9 @@
     }
     heartsEl.innerHTML = h;
     scoreEl.textContent = st.score;
-    if (st.clearing) {
-      metaEl.textContent = '破 关 · 下一阵';
-    } else if (st.mode === MODE.INTER) {
-      metaEl.textContent = '第 ' + st.level + ' 关 · 等 候 出 战';
-    } else if (foe) {
-      metaEl.textContent = '第 ' + st.level + ' 关 · 敌将 ' + Math.max(0, foe.hp) + '/' + foe.maxHp +
-        ' · 第' + waveOf() + '波';
-    } else {
-      metaEl.textContent = '第 ' + st.level + ' 关';
-    }
+    metaEl.textContent = metaText();
     /* 第 5 关以后，左下角告诉玩家：对手是照你的手速配的 */
-    var showMatch = st.level > 5 && st.mode === MODE.PLAY && !st.clearing && speedLog.length >= 2;
+    var showMatch = st.level >= CFG.skill.from && st.mode === MODE.PLAY && !st.clearing && speedLog.length >= 2;
     if (showMatch) {
       matchTagEl.textContent = matchLabel();
       matchTagEl.classList.add('on');
@@ -2831,15 +3457,15 @@
             pl.dying = true;
             pl.dieT = 0.75;
             burnBurst(pl.x, pl.y + 10);
-            damageFoe(1, pl.x, pl.y - 26, false);
+            damageFoe(CFG.hp.small, pl.x, pl.y - 26, false);
           } else {
-            damageFoe(1, pl.x, pl.y - 26, false);
+            damageFoe(CFG.hp.small, pl.x, pl.y - 26, false);
             tipEl.textContent = '令牌烧裂了，再烧一次！';
           }
         } else {
           burnBurst(sh.tx, sh.ty);
-          if (sh.foeWord) clashAt('小兵', sh.ch, 1, sh.foeWord);
-          damageFoe(1, sh.tx, sh.ty, false);
+          if (sh.foeWord) clashAt('小兵', sh.ch, CFG.hp.small, sh.foeWord);
+          damageFoe(CFG.hp.small, sh.tx, sh.ty, false);
         }
         shots.splice(s, 1);
       }
@@ -2856,6 +3482,12 @@
 
     st.elapsed += dt;
     if (!st.clearing) st.playT += dt;   /* 手速时钟：破关演出、战报屏都不走 */
+    if (!st.clearing) {
+      st.levelT += dt;                  /* 本关计时（进阶版显示） */
+      /* 计时数字 10Hz 刷新就够，别每帧重建 HUD */
+      hudClockT += dt;
+      if (CFG.clock && hudClockT >= 0.1) { hudClockT = 0; metaEl.textContent = metaText(); }
+    }
 
     /* 字母栏：有空格就立刻补满。
        玩家正在选字母（sel 非空）或开着选字面板时，格子一律不动。 */
@@ -2891,6 +3523,7 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (paperCanvas) ctx.drawImage(paperCanvas, 0, 0, W, H);
     else { ctx.fillStyle = '#f8f5ec'; ctx.fillRect(0, 0, W, H); }
+    if (farCanvas) ctx.drawImage(farCanvas, 0, 0, W, H);
 
     var sx = 0, sy = 0;
     if (st.shake > 0) {
@@ -2900,10 +3533,7 @@
     ctx.save();
     ctx.translate(sx, sy);
 
-    drawSky();
-    drawMountains();
     drawGround();
-    drawGate();
     drawZhaoyun();
     drawFoeGeneral();
     drawPlaques();
@@ -2984,15 +3614,9 @@
   }
 
   function drawGround() {
-    var g = ctx.createLinearGradient(0, fieldY, 0, H * 0.47);
-    g.addColorStop(0, 'rgba(120,132,128,0.15)');
-    g.addColorStop(0.5, 'rgba(120,132,128,0.05)');
-    g.addColorStop(1, 'rgba(120,132,128,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, fieldY, W, H * 0.47 - fieldY);
-
-    ctx.strokeStyle = 'rgba(74,84,88,0.38)';
-    ctx.lineWidth = 1.4;
+    /* 参考布局图的干净地线：一条浅棕线，不再铺山景 */
+    ctx.strokeStyle = 'rgba(148,141,124,0.5)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(0, fieldY);
     ctx.lineTo(W, fieldY);
@@ -3047,9 +3671,115 @@
   /* 火柴人：一根墨线勾身子，四点画完四肢。
      pal.ink 主墨色，pal.accent 朱砂点缀（红缨 / 腰带）
      kick 0~1：踢出火苗时抬腿的幅度 */
-  function drawWarrior(pal, kick) {
+  /* ---------------------------------------------------------------------
+     军阶：每 20 关升一级，同一副骨架上叠装备，越升越像样。
+     小兵=光头短褐木棍 → 伍长=头巾短甲短刀 → 百户=铁盔肩甲披风长矛
+     → 千户=金盔长缨鳞甲战袍 → 将军=双翎护心镜大氅长戟
+     只用线条和块面，学 80 年代美影厂那种单线勾边、色块平涂的味道。
+     --------------------------------------------------------------------- */
+  var RANKS = [
+    { name: '小兵', min: 1,  armor: 'rgba(169,133,90,0.92)', cloth: 'rgba(169,133,90,0.50)' },
+    { name: '伍长', min: 20, armor: 'rgba(169,133,90,0.92)', cloth: 'rgba(169,133,90,0.55)' },
+    { name: '百户', min: 40, armor: 'rgba(92,110,116,0.95)',  cloth: 'rgba(92,110,116,0.60)' },
+    { name: '千户', min: 60, armor: 'rgba(201,162,39,0.95)',  cloth: 'rgba(201,162,39,0.62)' },
+    { name: '将军', min: 80, armor: 'rgba(217,178,63,0.98)',  cloth: 'rgba(217,178,63,0.66)' }
+  ];
+  function troopRank(lv) {
+    var n = lv || 1;
+    for (var i = RANKS.length - 1; i >= 0; i--) if (n >= RANKS[i].min) return i;
+    return 0;
+  }
+  function troopName(lv) { return RANKS[troopRank(lv)].name; }
+
+  /* ---------------------------------------------------------------------
+     三国名将：玩家挑一员代表自己，敌将从别家阵营里出。
+     名字只是身份，军阶（小兵→将军）照常一级级往上长。
+     --------------------------------------------------------------------- */
+  var FACTIONS = [
+    { k: '蜀', c: '#4E7A5A' },
+    { k: '魏', c: '#3F5F8A' },
+    { k: '吴', c: '#B8453A' },
+    { k: '董', c: '#6B5B7B' }
+  ];
+  var HEROES = [
+    { n: '赵云', f: '蜀', t: '一身是胆' },
+    { n: '关羽', f: '蜀', t: '威震华夏' },
+    { n: '张飞', f: '蜀', t: '万人之敌' },
+    { n: '马超', f: '蜀', t: '锦马超' },
+    { n: '黄忠', f: '蜀', t: '老当益壮' },
+    { n: '张辽', f: '魏', t: '威震逍遥津' },
+    { n: '许褚', f: '魏', t: '虎痴' },
+    { n: '典韦', f: '魏', t: '古之恶来' },
+    { n: '夏侯惇', f: '魏', t: '拔矢啖睛' },
+    { n: '张郃', f: '魏', t: '巧变' },
+    { n: '徐晃', f: '魏', t: '长驱直入' },
+    { n: '曹仁', f: '魏', t: '天人将军' },
+    { n: '周瑜', f: '吴', t: '儒将风流' },
+    { n: '甘宁', f: '吴', t: '锦帆百骑' },
+    { n: '太史慈', f: '吴', t: '信义笃烈' },
+    { n: '吕蒙', f: '吴', t: '士别三日' },
+    { n: '陆逊', f: '吴', t: '火烧连营' },
+    { n: '黄盖', f: '吴', t: '苦肉诈降' },
+    { n: '吕布', f: '董', t: '人中吕布' },
+    { n: '华雄', f: '董', t: '西凉猛将' }
+  ];
+  var HERO_KEY = 'pzqb_hero';
+  function factionColor(k) {
+    for (var i = 0; i < FACTIONS.length; i++) if (FACTIONS[i].k === k) return FACTIONS[i].c;
+    return '#6B5B7B';
+  }
+  function spacedName(n) { return n.split('').join(' '); }
+  function tint(hex, alpha) {
+    var v = hex.replace('#', '');
+    var r = parseInt(v.slice(0, 2), 16), g = parseInt(v.slice(2, 4), 16), b2 = parseInt(v.slice(4, 6), 16);
+    return 'rgba(' + r + ',' + g + ',' + b2 + ',' + alpha + ')';
+  }
+  function loadHero() {
+    try {
+      var v = localStorage.getItem(HERO_KEY);
+      if (v) {
+        for (var i = 0; i < HEROES.length; i++) if (HEROES[i].n === v) return HEROES[i];
+      }
+    } catch (e) {}
+    return HEROES[0];
+  }
+  var hero = loadHero();
+  function setHero(h) {
+    if (!h) return;
+    hero = h;
+    try { localStorage.setItem(HERO_KEY, h.n); } catch (e) {}
+    paintHeroPick();
+  }
+  function paintHeroPick() {
+    var el = document.getElementById('heroNow');
+    if (el) el.textContent = hero.f + ' · ' + spacedName(hero.n);
+  }
+  /* 敌将：从别家阵营抽，连着两关不重复同一个人 */
+  function pickFoeHero() {
+    var pool = HEROES.filter(function (h) { return h.f !== hero.f; });
+    var last = (foe && foe.hero) ? foe.hero.n : '';
+    var p2 = pool.filter(function (h) { return h.n !== last; });
+    if (!p2.length) p2 = pool;
+    return p2[(Math.random() * p2.length) | 0];
+  }
+  /* 阵营战绩：给以后阵营 PK 攒数据（本机）。best=最远关卡，hero=打出来的那员将 */
+  function recordFaction(reached) {
+    try {
+      var raw = localStorage.getItem('pzqb_faction');
+      var o = raw ? JSON.parse(raw) : {};
+      var f = o[hero.f] || { best: 0, runs: 0 };
+      f.runs = (f.runs || 0) + 1;
+      if (reached > (f.best || 0)) { f.best = reached; f.hero = hero.n; }
+      o[hero.f] = f;
+      localStorage.setItem('pzqb_faction', JSON.stringify(o));
+    } catch (e) {}
+  }
+
+  function drawWarrior(pal, kick, rank) {
     var ink = pal.ink;
     var acc = pal.accent;
+    var rk = clamp(rank || 0, 0, RANKS.length - 1);
+    var plate = RANKS[rk].armor;
     var k = clamp(kick || 0, 0, 1);
     var sway = Math.sin(st.t * 2.1) * 1.1;
 
@@ -3068,51 +3798,101 @@
     var hipY = -31;
     var neckY = -51 + sway * 0.3;
     var headY = -60 + sway * 0.5;
+    var shoulderY = neckY + 3;
 
-    /* 躯干一根线 */
-    ctx.beginPath();
-    ctx.moveTo(0, hipY);
-    ctx.lineTo(0, neckY);
-    ctx.stroke();
+    /* 披风 / 大氅：百户起才有，压在身子后面 */
+    if (rk >= 2) {
+      ctx.beginPath();
+      ctx.moveTo(-3.6, neckY + 1.5);
+      ctx.quadraticCurveTo(-13 - sway, hipY - 4, -15.5 - sway * 1.4, hipY + 13);
+      ctx.quadraticCurveTo(-8, hipY + 17, -1.5, hipY + 8);
+      ctx.closePath();
+      ctx.fillStyle = rk >= 4 ? 'rgba(58,62,66,0.92)' : 'rgba(168,70,60,0.88)';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
 
-    /* 头：一圈 */
-    ctx.beginPath();
-    ctx.arc(0, headY, 8.2, 0, TAU);
-    ctx.stroke();
+    /* 躯干：小兵一根线，伍长起穿短褐，百户起换甲 */
+    if (rk === 0) {
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(0, hipY);
+      ctx.lineTo(0, neckY);
+      ctx.stroke();
+    } else {
+      var tw = 6.2, bw = rk >= 2 ? 7.6 : 6.4, botY = rk >= 2 ? hipY - 1 : hipY + 3;
+      ctx.beginPath();
+      ctx.moveTo(-tw, neckY + 1);
+      ctx.lineTo(tw, neckY + 1);
+      ctx.lineTo(bw, botY);
+      ctx.lineTo(-bw, botY);
+      ctx.closePath();
+      ctx.fillStyle = plate;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      /* 鳞甲：千户起，两排短弧 */
+      if (rk >= 3) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(58,48,24,0.75)';
+        ctx.lineWidth = 1.1;
+        for (var r = 0; r < 2; r++) {
+          var ry = neckY + 9 + r * 7;
+          ctx.beginPath();
+          ctx.moveTo(-5.4, ry);
+          ctx.quadraticCurveTo(0, ry + 3.4, 5.4, ry);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      /* 护心镜：将军 */
+      if (rk >= 4) {
+        ctx.beginPath(); ctx.arc(0, neckY + 10, 3.1, 0, TAU);
+        ctx.fillStyle = 'rgba(244,231,188,0.96)';
+        ctx.fill();
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+      }
+      /* 肩甲：百户起 */
+      if (rk >= 2) {
+        [-1, 1].forEach(function (sgn) {
+          ctx.beginPath();
+          ctx.ellipse(sgn * 6.6, neckY + 3.2, 3.6, 2.4, sgn * 0.25, 0, TAU);
+          ctx.fillStyle = plate;
+          ctx.fill();
+          ctx.lineWidth = 1.4;
+          ctx.stroke();
+        });
+      } else {
+        /* 伍长：布袖 */
+        [-1, 1].forEach(function (sgn) {
+          ctx.beginPath();
+          ctx.ellipse(sgn * 5.8, neckY + 4, 2.8, 2.2, 0, 0, TAU);
+          ctx.fillStyle = RANKS[rk].cloth;
+          ctx.fill();
+        });
+      }
+    }
 
-    /* 眼睛一点 */
-    ctx.fillStyle = ink;
-    ctx.beginPath(); ctx.arc(3.4, headY - 1, 1.1, 0, TAU); ctx.fill();
-
-    /* 红缨：两根短线随风摆 */
-    ctx.strokeStyle = acc;
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.moveTo(-6.2, headY - 4.5);
-    ctx.quadraticCurveTo(-13, headY - 9 + sway, -17.5, headY - 3 + sway * 1.6);
-    ctx.stroke();
-
-    /* 腰带 */
+    /* 腰带 + 腰结 */
+    ctx.strokeStyle = ink;
     ctx.lineWidth = 2.6;
     ctx.beginPath();
     ctx.moveTo(-5.5, hipY + 3);
     ctx.lineTo(5.5, hipY + 3);
     ctx.stroke();
-
-    /* 手臂：前手随踢腿向后甩 */
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = 2.1;
-    var shoulderY = neckY + 3;
-    ctx.beginPath();
-    ctx.moveTo(0, shoulderY);
-    ctx.quadraticCurveTo(7, shoulderY + 6, 13 - 6 * k, hipY - 2 - 10 * k);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, shoulderY);
-    ctx.quadraticCurveTo(-7, shoulderY + 7, -12 - 5 * k, hipY - 1 + 6 * k);
-    ctx.stroke();
+    if (rk >= 1) {
+      ctx.beginPath(); ctx.arc(0, hipY + 3.4, 2.1, 0, TAU);
+      ctx.fillStyle = plate;
+      ctx.fill();
+      ctx.lineWidth = 1.3;
+      ctx.stroke();
+    }
 
     /* 支撑腿 */
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 2.1;
     ctx.beginPath();
     ctx.moveTo(0, hipY);
     ctx.quadraticCurveTo(-3, hipY + 17, -7, -1);
@@ -3132,6 +3912,128 @@
       ctx.beginPath();
       ctx.moveTo(fx - 2, fy);
       ctx.lineTo(fx + 5, fy - 1);
+      ctx.stroke();
+    }
+
+    /* 兵器：握在前手，随踢腿一起甩 */
+    var hx = 13 - 6 * k, hy = hipY - 2 - 10 * k;
+    if (rk === 0) {
+      /* 一根木棍 */
+      ctx.strokeStyle = 'rgba(138,101,56,0.92)';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(hx - 1, hy + 7); ctx.lineTo(hx + 6, hy - 25); ctx.stroke();
+    } else if (rk === 1) {
+      /* 短刀 */
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(hx - 1.5, hy + 3.5); ctx.lineTo(hx + 3, hy - 6); ctx.stroke();
+      ctx.strokeStyle = 'rgba(190,196,200,0.95)';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(hx + 3, hy - 6); ctx.lineTo(hx + 5, hy - 17); ctx.stroke();
+    } else {
+      /* 长矛；将军换成戟 */
+      ctx.strokeStyle = 'rgba(120,92,54,0.95)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(hx + 1, hy + 15); ctx.lineTo(hx + 7, hy - 38); ctx.stroke();
+      ctx.fillStyle = 'rgba(206,212,216,0.95)';
+      ctx.beginPath();
+      ctx.moveTo(hx + 7, hy - 50);
+      ctx.lineTo(hx + 4.2, hy - 38);
+      ctx.lineTo(hx + 9.6, hy - 38);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      if (rk >= 4) {
+        ctx.beginPath();
+        ctx.arc(hx + 2.2, hy - 36, 4.4, -0.42 * Math.PI, 0.34 * Math.PI);
+        ctx.stroke();
+      }
+    }
+
+    /* 手臂：前手随踢腿向后甩 */
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 2.1;
+    ctx.beginPath();
+    ctx.moveTo(0, shoulderY);
+    ctx.quadraticCurveTo(7, shoulderY + 6, 13 - 6 * k, hipY - 2 - 10 * k);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, shoulderY);
+    ctx.quadraticCurveTo(-7, shoulderY + 7, -12 - 5 * k, hipY - 1 + 6 * k);
+    ctx.stroke();
+
+    /* 头：一圈 */
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(0, headY, 8.2, 0, TAU);
+    ctx.stroke();
+
+    /* 眼睛一点 */
+    ctx.fillStyle = ink;
+    ctx.beginPath(); ctx.arc(3.4, headY - 1, 1.1, 0, TAU); ctx.fill();
+
+    /* 头巾 / 铁盔 */
+    if (rk === 1) {
+      ctx.strokeStyle = 'rgba(138,101,56,0.95)';
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(-7.6, headY - 3.4);
+      ctx.quadraticCurveTo(0, headY - 6.6, 7.4, headY - 4);
+      ctx.stroke();
+      /* 两条飘带 */
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-7.4, headY - 4);
+      ctx.quadraticCurveTo(-13, headY - 4 + sway, -17, headY + 1 + sway * 1.6);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-7.4, headY - 2.2);
+      ctx.quadraticCurveTo(-12.4, headY + 2 + sway, -15.4, headY + 6 + sway);
+      ctx.stroke();
+    } else if (rk >= 2) {
+      ctx.strokeStyle = ink;
+      /* 铁盔：半个圆扣在头顶 */
+      ctx.beginPath();
+      ctx.arc(0, headY - 0.8, 8.9, Math.PI * 1.02, Math.PI * 1.98);
+      ctx.closePath();
+      ctx.fillStyle = plate;
+      ctx.fill();
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      /* 盔沿一道 */
+      ctx.beginPath();
+      ctx.moveTo(-8.7, headY - 1.2);
+      ctx.lineTo(8.7, headY - 1.2);
+      ctx.stroke();
+      /* 护颈：后脑两撇 */
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(-8, headY + 2); ctx.lineTo(-10.6, headY + 8); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-5.2, headY + 6); ctx.lineTo(-6.8, headY + 10); ctx.stroke();
+      /* 盔顶尖：千户起 */
+      if (rk >= 3) {
+        ctx.beginPath(); ctx.moveTo(0, headY - 8.8); ctx.lineTo(0, headY - 12.6); ctx.stroke();
+      }
+    }
+
+    /* 红缨：小兵没有，伍长起越长越显职级；将军换双雉翎 */
+    if (rk >= 2) {
+      ctx.strokeStyle = acc;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      if (rk >= 4) {
+        ctx.moveTo(-1, headY - 10);
+        ctx.quadraticCurveTo(-11, headY - 20 + sway, -24, headY - 13 + sway * 1.6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-1, headY - 10);
+        ctx.quadraticCurveTo(-8, headY - 24 + sway, -19, headY - 25 + sway * 1.4);
+      } else {
+        var pl = rk === 2 ? 1 : 1.5;
+        ctx.moveTo(-5.5, headY - 6);
+        ctx.quadraticCurveTo(-11 * pl, headY - 10 * pl + sway, -16 * pl, headY - 4 * pl + sway * 1.6);
+      }
       ctx.stroke();
     }
 
@@ -3203,11 +4105,20 @@
     var br = Math.sin(st.t * 1.7) * 1.0;
     ctx.save();
     ctx.translate(x, y + br);
+    var myRank = troopRank(st.level);
+    var sc = 0.52 + myRank * 0.014;   /* 职级越高，身形略壮一点 */
+    ctx.scale(sc, sc);
     drawWarrior({
       ink: 'rgba(52,58,62,0.86)',
       accent: 'rgba(184,69,58,0.92)'
-    }, kickAmp(st.kickT));
+    }, kickAmp(st.kickT), myRank);
     ctx.restore();
+
+    /* 脚下名字：自己选的那员将 + 阵营色 */
+    ctx.font = '10px -apple-system,"PingFang SC",serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = factionColor(hero.f);
+    ctx.fillText(spacedName(hero.n) + ' · ' + hero.f, x, y + 20);
   }
 
   function drawFoeGeneral() {
@@ -3223,22 +4134,32 @@
     ctx.save();
     ctx.translate(x, y + br);
     ctx.rotate((1 - a) * -0.16);
-    ctx.scale(-1, 1);   /* 镜像：面朝左 */
+    var foeRank = troopRank(st.level);
+    var fsc = 0.52 + foeRank * 0.014;
+    ctx.scale(-fsc, fsc);   /* 镜像：面朝左；比例与赵云一致 */
     drawWarrior({
       ink: 'rgba(58,62,66,0.9)',
       accent: 'rgba(110,114,120,0.9)'
-    }, kickAmp(foe.kickT));
+    }, kickAmp(foe.kickT), foeRank);
     ctx.restore();
 
-    /* 敌将血条 */
-    var bw = Math.min(70, W * 0.2), bh = 4;
-    var bx = x - bw / 2, by = y - 96;
-    ctx.fillStyle = 'rgba(80,90,94,0.16)';
-    ctx.fillRect(bx, by, bw, bh);
+    /* 敌将血条：3 大格分三段画，段内填充 —— 5 个小兵打满一格的进度看得见 */
+    var bw = Math.min(72, W * 0.19), bh = 5, gap = 2.5;
+    var bx = x - bw / 2, by = y + 30;
+    var segW = (bw - gap * (HP_MAX - 1)) / HP_MAX;
     var ratio = clamp(foe.hp / foe.maxHp, 0, 1);
-    ctx.fillStyle = ratio > 0.5 ? 'rgba(88,126,96,0.75)'
-      : (ratio > 0.22 ? 'rgba(186,148,68,0.8)' : 'rgba(184,69,58,0.85)');
-    ctx.fillRect(bx, by, bw * ratio, bh);
+    var segColor = ratio > 0.5 ? 'rgba(88,126,96,0.85)'
+      : (ratio > 0.22 ? 'rgba(186,148,68,0.9)' : 'rgba(184,69,58,0.9)');
+    for (var sg = 0; sg < HP_MAX; sg++) {
+      var sx = bx + sg * (segW + gap);
+      ctx.fillStyle = 'rgba(80,90,94,0.14)';
+      ctx.fillRect(sx, by, segW, bh);
+      var fill = clamp(slotsLeft(foe.hp) - sg, 0, 1);
+      if (fill > 0) {
+        ctx.fillStyle = segColor;
+        ctx.fillRect(sx, by, segW * fill, bh);
+      }
+    }
 
     /* 拼字过程：字母逐个亮起 */
     if (foe.state === 'spelling' && foe.target) {
@@ -3255,20 +4176,23 @@
       ctx.font = '600 13px -apple-system,"PingFang SC",serif';
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(184,69,58,0.8)';
-      ctx.fillText(txt, x, y - 110);
+      ctx.fillText(txt, x, y - 66);
       /* 进度细线 */
       ctx.strokeStyle = 'rgba(184,69,58,0.35)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(x - 26, y - 102);
-      ctx.lineTo(x - 26 + 52 * prog, y - 102);
+      ctx.moveTo(x - 26, y - 58);
+      ctx.lineTo(x - 26 + 52 * prog, y - 58);
       ctx.stroke();
-    } else {
-      ctx.font = '10px -apple-system,"PingFang SC",serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(90,94,100,0.55)';
-      ctx.fillText('敌 将', x, y - 108);
     }
+    /* 名字常驻脚下；拼字时头顶另有音节 */
+    ctx.font = '10px -apple-system,"PingFang SC",serif';
+    ctx.textAlign = 'center';
+    var fh = foe.hero;
+    ctx.fillStyle = fh ? factionColor(fh.f) : 'rgba(90,94,100,0.55)';
+    ctx.globalAlpha = a * 0.85;
+    ctx.fillText(fh ? (spacedName(fh.n) + ' · ' + fh.f) : '敌 将', x, y + 20);
+    ctx.globalAlpha = a;
     ctx.globalAlpha = 1;
   }
 
@@ -3489,7 +4413,7 @@
       ctx.globalAlpha = fade * 0.92;
       ctx.font = '9.5px -apple-system,"PingFang SC",serif';
       ctx.fillStyle = 'rgba(138,101,56,0.92)';
-      ctx.fillText(cl.rank + ' 出 战 · ' + cl.dmg + ' 伤', cx, cy + 36);
+      ctx.fillText(cl.rank + ' 出 战 · ' + dmgText(cl.dmg), cx, cy + 36);
       ctx.restore();
     }
     ctx.textBaseline = 'alphabetic';
@@ -3526,7 +4450,8 @@
     renderGrid(false);
     bannerEl.classList.remove('on');
     document.getElementById('csTag').textContent =
-      '第 ' + lvCleared + ' 关 · 胜' + (gotTitle ? ' · 获封常胜将军' : '');
+      '第 ' + lvCleared + ' 关 · 胜' + (gotTitle ? ' · 获封常胜将军' : '') +
+      (st.rankUp ? ' · 升任' + troopName(st.level) : '');
     document.getElementById('csStreak').textContent = st.streak;
     var lvlChars = runChars.slice(st.levelStart);
     var uniq = [];
@@ -3534,7 +4459,11 @@
       if (uniq.indexOf(lvlChars[i]) < 0) uniq.push(lvlChars[i]);
     }
     document.getElementById('csStat').innerHTML =
-      '剩余 <span>' + st.hearts + '</span> 点血 · 本关拼出 <span>' + lvlChars.length + '</span> 个字' +
+      (CFG.clock
+        ? '本关 <span>' + (st.lastT || 0).toFixed(1) + '</span> 秒 · 拼出 <span>' + lvlChars.length + '</span> 个字' +
+          (bestTime ? '<br>最快一关 <span>' + bestTime.toFixed(1) + '</span> 秒' : '')
+        : '剩余 <span>' + st.hearts + '</span> 格血 · 本关拼出 <span>' + lvlChars.length + '</span> 个字') +
+      (st.healed ? '<br>补回 1 条命' : '') +
       (st.streak < 5 ? '<br>再赢 ' + (5 - st.streak) + ' 场，封「常胜将军」' : '<br>常胜将军 · 保持住');
     var rc = document.getElementById('csChars');
     rc.innerHTML = '';
@@ -3557,15 +4486,24 @@
     nextLevel(pendingTier);
   });
 
-  function startGame() {
+  function startGame(resume) {
     audioInit();
+    heroPanel.classList.add('hide');
     st.mode = MODE.PLAY;
     st.score = 0; st.hearts = 3; st.level = 1;
     st.shake = 0; st.flash = 0; st.gold = 0; st.lock = false; st.elapsed = 0;
     st.combo = 0; st.maxCombo = 0; st.clearing = false; st.failT = 0;
     st.streak = 0; st.levelStart = 0;
+    /* 续战：带上次的关卡/血量/连胜接着打（点首页「续战」按钮时传入） */
+    if (resume && resume.lv >= 2 && resume.hp >= 1) {
+      st.level = resume.lv;
+      st.hearts = resume.hp;
+      st.streak = Math.max(resume.sk || 0, resume.lv - 1);
+      st.score = resume.sc || 0;
+    }
     /* 手速档案每局重测：不同孩子、不同心情，速度都不一样 */
     st.playT = 0; st.lastChar = -1;
+    st.levelT = 0; st.lastT = 0; st.healed = false;
     speedLog = []; skillVal = -1;
     rebuildTier(st.level);
     chars = []; shots = []; bits = []; plaques = []; clashes = [];
@@ -3601,10 +4539,48 @@
     return VERDICTS[VERDICTS.length - 1];
   }
 
+  /* 续战存档：只记「打到第几关 / 剩几格血 / 连胜几场 / 累计字数」。
+     成绩（最高分/称号/已学字）另有存档，互不影响。 */
+  function saveRun() {
+    if (st.mode !== MODE.PLAY && st.mode !== MODE.INTER) return;
+    if (st.level < 2) return;   /* 第 1 关没打完就退，不值得续 */
+    try {
+      localStorage.setItem(saveKey('pzqb_run'),
+        JSON.stringify({ lv: st.level, hp: st.hearts, sk: st.streak, sc: st.score, t: Date.now() }));
+    } catch (e) {}
+  }
+  function clearRun() { try { localStorage.removeItem(saveKey('pzqb_run')); } catch (e) {} }
+
+  /* 回首页：收兵、清场、亮出首页（换版本、换将都从这里走） */
+  function goHome() {
+    var inRun = st.mode === MODE.PLAY || st.mode === MODE.INTER;
+    if (inRun) saveRun();
+    st.mode = MODE.OVER;
+    st.lock = false;
+    st.clearing = false;
+    st.combo = 0;
+    closeLadder();
+    bannerEl.classList.remove('on');
+    comboEl.classList.remove('on');
+    wrap.classList.remove('lowlife');
+    wrap.classList.remove('dimhud');
+    overScreen.classList.add('hide');
+    clearScreenEl.classList.add('hide');
+    startScreen.classList.remove('hide');
+    plaques = []; shots = []; clashes = []; bits = [];
+    renderGrid(false);
+    refreshStartStats();
+    document.getElementById('bestOver').textContent = best;
+    var hb = document.getElementById('homeBtnHud');
+    hb.classList.remove('arm');
+    hb.textContent = '回 营';
+  }
+
   function gameOver() {
     st.mode = MODE.OVER;
     st.lock = true;
     st.failT = 0;
+    clearRun();   /* 败北即单局结束，续战存档清掉（成绩已另存） */
     SND.over();
     closeLadder();
     bannerEl.classList.remove('on');
@@ -3613,20 +4589,29 @@
     var isNew = st.score > best;
     if (isNew) {
       best = st.score;
-      try { localStorage.setItem('pzqb_best', String(best)); } catch (e) {}
+      try { localStorage.setItem(saveKey('pzqb_best'), String(best)); } catch (e) {}
     }
     var reached = st.level;
+    recordBestLv(reached);
+    recordFaction(reached);
     document.getElementById('finalScore').textContent = st.score;
     document.getElementById('bestOver').textContent = best;
     document.getElementById('bestStart').textContent = best;
     document.getElementById('learnStart').textContent = learnedCount();
     document.getElementById('newRec').classList.toggle('on', isNew);
-    document.getElementById('overTag').textContent = isNew ? '新 纪 录' : '守 城 失 守';
+    document.getElementById('overTag').textContent = isNew ? '新 纪 录'
+      : (CFG.label + ' · 守 城 失 守');
     document.getElementById('overLv').textContent = '战 到 第 ' + reached + ' 关' +
       (st.title ? ' · ' + st.title : '');
     var newCount = newLearned.length;
+    var avgT = st.score > 0 ? st.elapsed / st.score : 0;
     document.getElementById('overStat').innerHTML =
       '连胜 <span>' + st.streak + '</span> 场 · 拼出 <span>' + st.score + '</span> 个字' +
+      (CFG.clock
+        ? '<br>总用时 <span>' + st.elapsed.toFixed(0) + '</span> 秒 · 平均 <span>' + avgT.toFixed(1) + '</span> 秒一个字' +
+          (bestTime ? ' · 最快一关 <span>' + bestTime.toFixed(1) + '</span> 秒' : '') +
+          (avgT > 0 ? '<br>你的节奏标定 <span>' + (avgT / PACE_BASE).toFixed(2) + '</span> 倍（标准档 ' + PACE_BASE.toFixed(1) + ' 秒/字）· 下一局按这个速度配牌' : '')
+        : '') +
       '<br>' + (newCount > 0 ? ('这一局新学 <span>' + newCount + '</span> 个字 · ') : '') +
       '累计已学 <span>' + learnedCount() + '</span> 字';
 
@@ -3658,31 +4643,159 @@
     overScreen.classList.remove('hide');
   }
 
+  /* 首页选将：按阵营挑人，选完记住，下次打开还是他 */
+  var heroPanel = document.getElementById('heroPanel');
+  var hpFacs = document.getElementById('hpFacs');
+  var hpGrid = document.getElementById('hpGrid');
+  var hpFac = '蜀';
+  function paintFac() {
+    Array.prototype.forEach.call(hpFacs.children, function (b) {
+      var on = b.getAttribute('data-fac') === hpFac;
+      b.classList.toggle('on', on);
+      b.style.background = on ? factionColor(hpFac) : '';
+      b.style.color = on ? '#fff' : '';
+      b.style.borderColor = on ? 'transparent' : '';
+    });
+    hpGrid.innerHTML = '';
+    HEROES.filter(function (h) { return h.f === hpFac; }).forEach(function (h) {
+      var cell = document.createElement('button');
+      cell.className = 'hpCell' + (h.n === hero.n ? ' on' : '');
+      if (h.n === hero.n) {
+        var c = factionColor(hpFac);
+        cell.style.borderColor = c;
+        cell.style.background = tint(c, 0.12);
+      }
+      cell.innerHTML = '<div class="hn">' + h.n + '</div><div class="ht">' + h.t + '</div>';
+      if (h.n === hero.n) cell.querySelector('.hn').style.color = factionColor(h.f);
+      cell.addEventListener('click', function (e) {
+        e.stopPropagation();
+        SND.tap();
+        setHero(h);
+        paintFac();
+      });
+      hpGrid.appendChild(cell);
+    });
+  }
+  FACTIONS.forEach(function (f) {
+    var b = document.createElement('button');
+    b.className = 'hpFac';
+    b.setAttribute('data-fac', f.k);
+    b.textContent = f.k;
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      SND.tap();
+      hpFac = f.k;
+      paintFac();
+    });
+    hpFacs.appendChild(b);
+  });
+  document.getElementById('heroPick').addEventListener('click', function (e) {
+    e.stopPropagation();
+    SND.tap();
+    hpFac = hero.f;
+    paintFac();
+    heroPanel.classList.remove('hide');
+  });
+  document.getElementById('hpClose').addEventListener('click', function (e) {
+    e.stopPropagation();
+    SND.tap();
+    heroPanel.classList.add('hide');
+  });
+  paintHeroPick();
+  setHero(hero);
+
   document.getElementById('startBtn').addEventListener('click', function (e) {
     e.stopPropagation(); startGame();
+  });
+  document.getElementById('homeBtnOver').addEventListener('click', function (e) {
+    e.stopPropagation(); SND.tap(); goHome();
+  });
+  document.getElementById('homeBtnClear').addEventListener('click', function (e) {
+    e.stopPropagation(); SND.tap(); goHome();
+  });
+  /* 局内回营要按两下：第一下变成"退出？"，2.5 秒内再点才走，防误触 */
+  var hudArmT = null;
+  document.getElementById('homeBtnHud').addEventListener('click', function (e) {
+    e.stopPropagation();
+    var hb = this;
+    if (hb.classList.contains('arm')) {
+      clearTimeout(hudArmT);
+      SND.tap();
+      goHome();
+      return;
+    }
+    SND.tap();
+    hb.classList.add('arm');
+    hb.textContent = '退出？';
+    clearTimeout(hudArmT);
+    hudArmT = setTimeout(function () {
+      hb.classList.remove('arm');
+      hb.textContent = '回 营';
+    }, 2500);
   });
   document.getElementById('againBtn').addEventListener('click', function (e) {
     e.stopPropagation(); startGame();
   });
 
-  /* 节奏开关：慢慢打 / 正常速度 */
-  var paceRow = document.getElementById('paceRow');
-  function paintPace() {
-    Array.prototype.forEach.call(paceRow.children, function (b) {
-      var isSlow = b.getAttribute('data-pace') === 'slow';
-      b.classList.toggle('on', isSlow === slowPace);
+  /* 首页选版本：儿童版（慢速认字）/ 进阶版（竞速）。选了就记住，下次直接进 */
+  var modeRow = document.getElementById('modeRow');
+  function paintMode() {
+    Array.prototype.forEach.call(modeRow.children, function (b) {
+      b.classList.toggle('on', b.getAttribute('data-mode') === GAME_MODE);
     });
   }
-  Array.prototype.forEach.call(paceRow.children, function (b) {
+  function refreshStartStats() {
+    document.getElementById('bestStart').textContent = best;
+    document.getElementById('learnStart').textContent = learnedCount();
+    document.getElementById('lvStart').textContent = bestLv;
+    refreshResume();
+  }
+
+  /* 续战按钮：有上次没打完的局才亮出来 */
+  function refreshResume() {
+    var rb = document.getElementById('resumeBtn');
+    if (!rb) return;
+    var run = null;
+    try { run = JSON.parse(localStorage.getItem(saveKey('pzqb_run')) || 'null'); } catch (e) { run = null; }
+    var ok = !!(run && run.lv >= 2 && run.hp >= 1);
+    rb.style.display = ok ? '' : 'none';
+    if (ok) rb.textContent = '续 战 · 第 ' + run.lv + ' 关';
+  }
+  (function () {
+    var rb = document.getElementById('resumeBtn');
+    if (rb) rb.addEventListener('click', function () {
+      var run = null;
+      try { run = JSON.parse(localStorage.getItem(saveKey('pzqb_run')) || 'null'); } catch (e) {}
+      if (run && run.lv >= 2 && run.hp >= 1) { SND.tap(); startGame(run); }
+    });
+  })();
+  function setMode(m) {
+    if (m !== 'kids' && m !== 'pro' && m !== 'dian') return;
+    GAME_MODE = m;
+    CFG = PRESETS[m];
+    try { localStorage.setItem(MODE_KEY, m); } catch (e) {}
+    loadModeProfile();
+    paintMode();
+    refreshStartStats();
+    document.getElementById('bestOver').textContent = best;
+    /* 首页那行小字随版本变：让家长一眼看出区别 */
+    var rl = document.querySelector('.ruleLine');
+    if (rl) {
+      rl.innerHTML = isKids()
+        ? '3 条命 · 打空敌将就破一关 · <b style="color:#b8453a">每破一关补 1 条命</b>'
+        : (GAME_MODE === 'pro'
+          ? '3 条命 · 破关回一格 · <b style="color:#b8453a">节奏跟着你的手速走</b>'
+          : '3 条命 · 不补血 · <b style="color:#b8453a">殿试原味，漏完即止</b>');
+    }
+  }
+  Array.prototype.forEach.call(modeRow.children, function (b) {
     b.addEventListener('click', function (e) {
       e.stopPropagation();
-      slowPace = b.getAttribute('data-pace') === 'slow';
-      try { localStorage.setItem(PACE_KEY, slowPace ? '1' : '0'); } catch (err) {}
-      paintPace();
+      setMode(b.getAttribute('data-mode'));
       SND.tap();
     });
   });
-  paintPace();
+  setMode(GAME_MODE);   /* 按存下来的版本初始化界面 */
 
   var lastMs = 0;
   function frame(ms) {
@@ -3698,6 +4811,9 @@
 
   window.addEventListener('resize', function () { resize(); });
   window.addEventListener('orientationchange', function () { setTimeout(resize, 160); });
+  /* 退出/切后台时顺手存续战进度（关页面、锁屏、切微信都不丢） */
+  window.addEventListener('pagehide', saveRun);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) saveRun(); });
 
   resize();
   renderMyGrid(null);
@@ -3713,7 +4829,25 @@
       DB: DB, HOMO: HOMO, TONE_TBL: TONE_TBL,
       toneOf: toneOf, bareOf: bareOf, toneGroups: toneGroups,
       ensureLetters: ensureLetters, cards: function () { return cards.map(function (c) { return c ? c.v : null; }); },
-      targets: TARGETS.length, slow: function () { return slowPace; },
+      cardParts: function () { return cards.map(function (c) { return c ? (c.parts || partsOf(c.v)) : null; }); },
+      compoundKeys: function () { return Object.keys(COMPOUND); },
+      cardsForWord: cardsForWord,
+      resetBoard: function () {
+        cards = [null, null, null, null, null, null, null, null];
+        pending.length = 0;
+        newWave();
+        flushPending();
+        renderGrid(false);
+        return cards.map(function (c) { return c ? c.v : null; });
+      },
+      targets: TARGETS.length, slow: function () { return isKids(); },
+      mode: function () { return GAME_MODE; },
+      setMode: setMode,
+      cfg: function () { return CFG; },
+      levelT: function () { return st.levelT; },
+      lastT: function () { return st.lastT; },
+      bestTime: function () { return bestTime; },
+      weights: function () { return poolWeights(); },
       targetsNow: function () { return TARGETS.length; },
       homo: function () { return HOMO; },
       sampleTargets: function (n) {
@@ -3725,7 +4859,7 @@
       rankOf: function (c) { return rankOf(c); },
       spawnsTotal: function () { return spawnTotal; },
       setHearts: function (n) { st.hearts = n; updateHud(); },
-      clearNow: function () { if (!foe) return false; foe.hp = 1; damageFoe(1, foeX, fieldY - 60, true); return true; },
+      clearNow: function () { if (!foe) return false; foe.hp = CFG.hp.small; damageFoe(CFG.hp.small, foeX, fieldY - 60, true); return true; },
       combo: function () { return st.combo; },
       maxCombo: function () { return st.maxCombo; },
       clearing: function () { return st.clearing; },
@@ -3751,6 +4885,17 @@
       bestStreak: function () { return st.bestStreak; },
       title: function () { return st.title; },
       hpMax: function () { return HP_MAX; },
+      paceFit: function () { return paceFit(); },
+      paceBase: function (v) { if (typeof v === 'number') PACE_BASE = v; return PACE_BASE; },
+      paceProbe: function (elapsed, score) { st.elapsed = elapsed; st.score = score; return paceFit(); },
+      plaqueSpeed: function () { return plaques.length ? plaques[plaques.length - 1].sp : 0; },
+      hpSlots: function () { return foe ? slotsLeft(foe.hp) : 0; },
+      hpRaw: function () { return foe ? foe.hp : 0; },
+      dmgOf: function (kind) { return CFG.hp[kind]; },
+      dmgLabel: function (kind) { return dmgText(CFG.hp[kind]); },
+      idiomFeed: function () { var e = idiomFeedEntry([]); return e ? e.c : null; },
+      idioms: function () { return IDIOMS4.slice(); },
+      sylOf: function (c) { var e = sylEntryFor(c); return e ? e.c : null; },
       clashes: function () { return clashes.length; },
       putMyChars: function (arr) {
         myCells = [null, null, null, null];
@@ -3779,6 +4924,18 @@
       topTargets: function () { return TARGETS_TOP.length; },
       stage: function () { return st.level; },
       setLevel: function (n) { st.level = n; rebuildTier(n); },
+      hero: function () { return hero.n + '/' + hero.f; },
+      setHeroByName: function (n) {
+        for (var i = 0; i < HEROES.length; i++) if (HEROES[i].n === n) { setHero(HEROES[i]); return true; }
+        return false;
+      },
+      heroes: function () { return HEROES.map(function (h) { return h.f + h.n; }); },
+      foeHero: function () { return foe && foe.hero ? foe.hero.n + '/' + foe.hero.f : null; },
+      factionStats: function () { try { return localStorage.getItem('pzqb_faction'); } catch (e) { return null; } },
+      bestLv: function () { return bestLv; },
+      troopRank: troopRank,
+      troopName: troopName,
+      ranks: function () { return RANKS.map(function (r) { return r.name + '@' + r.min; }); },
       homoChars: function () {
         var n = 0; Object.keys(HOMO).forEach(function (k) { n += HOMO[k].length; });
         return n;
@@ -3795,7 +4952,7 @@
         if (!best) return false;
         best.dying = true; best.dieT = 0.6;
         st.score++;
-        damageFoe(1, best.x, best.y, true);
+        damageFoe(CFG.hp.small, best.x, best.y, true);
         return true;
       },
       hearts: function () { return st.hearts; },
