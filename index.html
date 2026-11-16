@@ -1773,6 +1773,16 @@
     } catch (e) { best = 0; }
     try { bestTime = parseFloat(localStorage.getItem(saveKey('pzqb_besttime')) || '0') || 0; } catch (e) { bestTime = 0; }
     try { bestLv = parseInt(localStorage.getItem(saveKey('pzqb_bestlv')) || '0', 10) || 0; } catch (e) { bestLv = 0; }
+    try { progLv = Math.max(1, parseInt(localStorage.getItem(saveKey('pzqb_prog')) || '1', 10) || 1); } catch (e) { progLv = 1; }
+  }
+
+  /* 关卡进度：只进不退，退出/输掉都不清（殿试不记，保持每局从第 1 关） */
+  function saveProg(n) {
+    if (GAME_MODE === 'dian') return;
+    if (n > progLv) {
+      progLv = n;
+      try { localStorage.setItem(saveKey('pzqb_prog'), String(progLv)); } catch (e) {}
+    }
   }
 
   /* 里程碑存档：历史最远打到第几关（按版本分开记，败北不清，给以后阵营选代表当参考） */
@@ -1802,6 +1812,7 @@
 
   var best = 0;
   var bestLv = 0;
+  var progLv = 1;   /* 关卡进度：蒙学/会试永久保留，下次直接从这一关开打 */
   var bestTime = 0;      /* 进阶版：破一关的最快用时（秒） */
   loadModeProfile();
 
@@ -3178,6 +3189,7 @@
 
     st.level = lvCleared + 1;
     recordBestLv(st.level);   /* 每打进一个新关卡就记下里程碑 */
+    saveProg(st.level);       /* 蒙学/会试：关卡进度永久保留，下次从这一关接着打 */
     rebuildTier(st.level);
     /* 每 20 关升一级军阶：20 伍长 / 40 百户 / 60 千户 / 80 将军 */
     var rankUp = troopRank(st.level) > troopRank(lvCleared);
@@ -4494,12 +4506,19 @@
     st.shake = 0; st.flash = 0; st.gold = 0; st.lock = false; st.elapsed = 0;
     st.combo = 0; st.maxCombo = 0; st.clearing = false; st.failT = 0;
     st.streak = 0; st.levelStart = 0;
-    /* 续战：带上次的关卡/血量/连胜接着打（点首页「续战」按钮时传入） */
-    if (resume && resume.lv >= 2 && resume.hp >= 1) {
-      st.level = resume.lv;
+    /* 续战：带上次的关卡/血量/连胜接着打（点首页「续战」按钮时传入）
+       没点续战也从头接上进度：蒙学/会试从记住的关卡开打，殿试每局回到第 1 关 */
+    var startLv = GAME_MODE === 'dian' ? 1 : Math.max(1, progLv);
+    var canResume = !!(resume && resume.lv >= 2 && resume.hp >= 1);
+    if (!canResume) clearRun();          /* 开新局就把上一局的续战存档作废，避免以后跳回低关卡 */
+    if (canResume) {
+      st.level = Math.max(resume.lv, startLv);
       st.hearts = resume.hp;
-      st.streak = Math.max(resume.sk || 0, resume.lv - 1);
+      st.streak = Math.max(resume.sk || 0, st.level - 1);
       st.score = resume.sc || 0;
+    } else {
+      st.level = startLv;
+      st.streak = startLv - 1;
     }
     /* 手速档案每局重测：不同孩子、不同心情，速度都不一样 */
     st.playT = 0; st.lastChar = -1;
@@ -4613,7 +4632,10 @@
           (avgT > 0 ? '<br>你的节奏标定 <span>' + (avgT / PACE_BASE).toFixed(2) + '</span> 倍（标准档 ' + PACE_BASE.toFixed(1) + ' 秒/字）· 下一局按这个速度配牌' : '')
         : '') +
       '<br>' + (newCount > 0 ? ('这一局新学 <span>' + newCount + '</span> 个字 · ') : '') +
-      '累计已学 <span>' + learnedCount() + '</span> 字';
+      '累计已学 <span>' + learnedCount() + '</span> 字' +
+      (GAME_MODE === 'dian'
+        ? '<br>殿试每局从第 1 关重来 · 你已打到过第 <span>' + bestLv + '</span> 关'
+        : '<br>进度已保存 · 下一局从第 <span>' + progLv + '</span> 关接着打');
 
     var v = verdictOf(reached);
     document.getElementById('overVerdict').textContent = v.t;
@@ -4748,6 +4770,9 @@
     document.getElementById('bestStart').textContent = best;
     document.getElementById('learnStart').textContent = learnedCount();
     document.getElementById('lvStart').textContent = bestLv;
+    /* 开战按钮直接写清从第几关开始，孩子一看就知道没白打 */
+    var sb = document.getElementById('startBtn');
+    if (sb) sb.textContent = GAME_MODE === 'dian' ? '开 战' : ('开 战 · 第 ' + progLv + ' 关');
     refreshResume();
   }
 
@@ -4782,10 +4807,10 @@
     var rl = document.querySelector('.ruleLine');
     if (rl) {
       rl.innerHTML = isKids()
-        ? '3 条命 · 打空敌将就破一关 · <b style="color:#b8453a">每破一关补 1 条命</b>'
+        ? '3 条命 · 打空敌将就破一关 · <b style="color:#b8453a">每破一关补 1 条命</b> · 进度自动保存'
         : (GAME_MODE === 'pro'
-          ? '3 条命 · 破关回一格 · <b style="color:#b8453a">节奏跟着你的手速走</b>'
-          : '3 条命 · 不补血 · <b style="color:#b8453a">殿试原味，漏完即止</b>');
+          ? '3 条命 · 破关回一格 · <b style="color:#b8453a">节奏跟着你的手速走</b> · 进度自动保存'
+          : '3 条命 · 不补血 · <b style="color:#b8453a">殿试原味，漏完即止</b> · 每局从第 1 关');
     }
   }
   Array.prototype.forEach.call(modeRow.children, function (b) {
@@ -4933,6 +4958,7 @@
       foeHero: function () { return foe && foe.hero ? foe.hero.n + '/' + foe.hero.f : null; },
       factionStats: function () { try { return localStorage.getItem('pzqb_faction'); } catch (e) { return null; } },
       bestLv: function () { return bestLv; },
+      progLv: function () { return progLv; },
       troopRank: troopRank,
       troopName: troopName,
       ranks: function () { return RANKS.map(function (r) { return r.name + '@' + r.min; }); },
