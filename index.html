@@ -46,6 +46,13 @@
   .fcell .py{font-size:9px;color:#9a9484;margin-top:1px}
   #myGrid .fcell.full{border-style:solid;border-color:#cbb391;background:#fffdf7}
   #myGrid .fcell.full .zh{color:#8a6538}
+  /* 场上木牌能跟这个字凑成词：金边脉动，玩家一眼看到「留着它」 */
+  #myGrid .fcell.link{border-color:#c99e56;background:#fff8e6;
+    box-shadow:0 0 0 2px rgba(201,158,86,.28),0 0 12px rgba(201,158,86,.35);
+    animation:linkPulse 1.15s ease-in-out infinite}
+  #myGrid .fcell.link .zh{color:#a9792c}
+  @keyframes linkPulse{0%,100%{box-shadow:0 0 0 2px rgba(201,158,86,.22),0 0 9px rgba(201,158,86,.26)}
+    50%{box-shadow:0 0 0 3px rgba(201,158,86,.42),0 0 16px rgba(201,158,86,.5)}}
   #foeGrid .fcell{border-color:rgba(185,179,166,.55);background:transparent}
   #foeGrid .fcell.full{border-style:solid;border-color:#a9a396;background:#e9e5dc}
   #foeGrid .fcell.full .zh{color:#3a3a38}
@@ -151,6 +158,7 @@
   #general .gname{font-size:40px;font-weight:900;color:#3a3a38;letter-spacing:6px;
     text-shadow:0 0 30px rgba(184,69,58,.45),0 0 70px rgba(184,69,58,.25)}
   #general .gword{margin-top:8px;font-size:15px;letter-spacing:8px;color:#b8453a}
+  #general .gsub{margin-top:7px;font-size:10.5px;letter-spacing:3px;color:#8b8474}
   #general .gburst{position:absolute;width:340px;height:340px;border-radius:50%;
     background:radial-gradient(circle,rgba(206,146,112,.38),rgba(184,69,58,.14) 42%,transparent 68%);
     animation:gburst .7s ease-out forwards}
@@ -318,6 +326,7 @@
       <div class="gburst"></div>
       <div class="gname">字将</div>
       <div class="gword">出 战</div>
+      <div class="gsub">出 阵</div>
     </div>
 
     <div id="banner"><div class="bMain"></div><div class="bSub"></div></div>
@@ -1277,11 +1286,28 @@
      进阶版另外做「词/成语向导」：字格里有字时，经常直接递上能组词、
      甚至能补成四字成语的那个字 —— 营长和大将军不再靠运气。 */
   function pickTarget() {
-    if (!isKids() && myCells && myCells.some(Boolean) && Math.random() < 0.7) {
-      var fed = null;
-      if (Math.random() < CFG.feed.idiom) fed = idiomFeedEntry([]);
-      if (!fed) fed = wordFeedEntry([]);
-      if (fed) return fed;
+    /* 敌将递上来的字，尽量能和我方字格里的字凑成词：
+       营长、大将军必须是「打得到」的东西，不能靠运气碰。
+       成语只差一个字时，优先把这个缺字递上来。 */
+    if (!NO_WORD_FEED && myCells && myCells.some(Boolean)) {
+      var idm = isKids() ? 0.34 : CFG.feed.idiom;
+      var prog = idiomProgress(myCells, 1);
+      if (prog) {
+        /* 成语要靠敌将「递字」才攒得起来：差一个几乎必送，差两个常送，
+           刚起头时偶尔接着送 —— 不然永远停在「差一个字」 */
+        var pGrow = prog.hit >= 3 ? (isKids() ? 0.72 : 0.86)
+          : (prog.hit === 2 ? idm : idm * 0.45);
+        if (Math.random() < pGrow) {
+          var tail = sylAnyFor(prog.miss[0]);
+          if (tail) return tail;
+        }
+      }
+      if (Math.random() < (isKids() ? 0.44 : 0.70)) {
+        var fed = null;
+        if (Math.random() < idm) fed = idiomFeedEntry([]);
+        if (!fed) fed = wordFeedEntry([]);
+        if (fed) return fed;
+      }
     }
     var lv = st.level, roll = Math.random(), r;
     var w = poolWeights();
@@ -1935,6 +1961,7 @@
     playT: 0, lastChar: -1,          /* 只在对战中走的时钟 + 上一次拼出字的时刻（手速测量用） */
     levelT: 0, lastT: 0, healed: false,   /* 本关用时 / 上一关用时 / 破关是否补了血 */
     combo: 0, maxCombo: 0, clearing: false, failT: 0,
+    words: 0, idioms: 0,            /* 本局营长 / 大将军出阵次数 */
     streak: 0, bestStreak: 0, title: '', levelStart: 0
   };
   /* 称号、连胜、最高分按版本分开存：儿童版和进阶版的成绩不能混在一起比 */
@@ -1991,6 +2018,7 @@
   var clashes = [];      // 中间对撞：我方字 vs 敌将的字
   var bits = [];
   var missT = 0;
+  var NO_WORD_FEED = false;   /* 自检开关：关掉「敌将送组词牌」做 A/B 对照 */
   var newLearned = [];
 
   var best = 0;
@@ -2534,6 +2562,12 @@
 
   function renderMyGrid(popChar) {
     Array.prototype.forEach.call(myGridEl.querySelectorAll('.fcell'), function (n) { n.remove(); });
+    /* 场上若有「打中就凑成词」的木牌，把参与的那个字描金边 */
+    var link = {};
+    for (var p = 0; p < plaques.length; p++) {
+      var cb = plaques[p].combo;
+      if (cb && !plaques[p].dying) cb.used.forEach(function (ch) { link[ch] = true; });
+    }
     for (var i = 0; i < 4; i++) {
       var cell = document.createElement('div');
       cell.className = 'fcell';
@@ -2541,6 +2575,7 @@
       if (c) {
         cell.classList.add('full');
         if (c === popChar) cell.classList.add('pop');
+        if (link[c.ch]) cell.classList.add('link');
         var zh = document.createElement('span');
         zh.className = 'zh';
         zh.textContent = c.ch;
@@ -3012,8 +3047,8 @@
     var idx = -1;
     for (var i = 0; i < 4; i++) { if (!myCells[i]) { idx = i; break; } }
     if (idx < 0) {
-      /* 满了挤掉最旧的 */
-      myCells.shift();
+      /* 满了：先挤掉「跟正在拼的成语无关」的那个，成语才凑得齐 */
+      myCells.splice(evictIndex(myCells), 1);
       myCells.push({ ch: w.c, p: w.p });
     } else {
       myCells[idx] = { ch: w.c, p: w.p };
@@ -3051,11 +3086,71 @@
     return hit;
   }
 
+  /* 成语拼装进度：字格里已经凑到几个字、还缺哪个。
+     只认最接近的那条（命中最多者）；重复字按份数扣（一心一意要两个「一」）。
+     minHit=1 时连「只起了一个头」的成语也算 —— 敌将据此决定要不要接着递。 */
+  function idiomProgress(cells, minHit) {
+    var need = minHit || 2;
+    var have = [];
+    for (var i = 0; i < cells.length; i++) if (cells[i]) have.push(cells[i].ch);
+    if (have.length < need) return null;
+    var best = null;
+    IDIOMS4.forEach(function (w) {
+      var pool = have.slice(), miss = [], hit = 0;
+      for (var k = 0; k < w.length; k++) {
+        var idx = pool.indexOf(w.charAt(k));
+        if (idx >= 0) { pool.splice(idx, 1); hit++; } else miss.push(w.charAt(k));
+      }
+      if (hit < need || !miss.length) return;   /* 没起头 / 已凑成（交给 findIdiom 出阵） */
+      if (!best || hit > best.hit) best = { w: w, hit: hit, miss: miss };
+    });
+    return best;
+  }
+
+  /* 字格满了谁让位：优先保住正在拼的那条成语的字，其余从最旧的开始挤。
+     不然成语永远差最后一个字——新字进来先把前面的挤掉了 */
+  function evictIndex(cells) {
+    var prog = idiomProgress(cells);
+    if (prog) {
+      var need = prog.w.split(''), keep = [];
+      for (var i = 0; i < cells.length; i++) {
+        keep[i] = false;
+        if (!cells[i]) continue;
+        var k = need.indexOf(cells[i].ch);
+        if (k >= 0) { need.splice(k, 1); keep[i] = true; }
+      }
+      for (var j = 0; j < cells.length; j++) if (cells[j] && !keep[j]) return j;
+    }
+    for (var m = 0; m < cells.length; m++) if (cells[m]) return m;
+    return 0;
+  }
+
+  /* 这块牌拼中之后会不会出字将 —— 用来在木牌上挂牌签、给我方字格描金边，
+     让玩家在牌走到城门口之前就知道「这一下值一个营长」 */
+  function comboOf(ch) {
+    var cells = [];
+    for (var i = 0; i < myCells.length; i++) if (myCells[i]) cells.push({ ch: myCells[i].ch, p: myCells[i].p });
+    if (cells.length >= 4) cells.splice(evictIndex(cells), 1);
+    cells.push({ ch: ch, p: '' });
+    var idiom = findIdiom(cells);
+    if (idiom) return { rank: '大将军', word: idiom, idiom: true, used: idiom.split('') };
+    for (var a = 0; a < cells.length; a++) {
+      for (var b = a + 1; b < cells.length; b++) {
+        var w1 = cells[a].ch, w2 = cells[b].ch, wd = null;
+        if (WORD_SET[w1 + w2]) wd = w1 + w2;
+        else if (WORD_SET[w2 + w1]) wd = w2 + w1;
+        if (wd) return { rank: '营长', word: wd, idiom: false, used: [w1, w2] };
+      }
+    }
+    return null;
+  }
+
   /* 字将出战：词语=营长、成语=大将军；伤害按版本配置的「分」结算 */
   function fireGeneral(word, used) {
     var isIdiom = word.length >= 4;
     var rank = isIdiom ? '大将军' : '营长';
     var dmg = isIdiom ? CFG.hp.idiom : CFG.hp.word;
+    if (isIdiom) st.idioms++; else st.words++;
 
     SND.general();
     st.gold = 0.75;
@@ -3064,8 +3159,10 @@
     var gEl = document.getElementById('general');
     gEl.querySelector('.gname').textContent = rank;
     gEl.querySelector('.gword').textContent = word.split('').join(' ');
+    gEl.querySelector('.gsub').textContent = '出 阵 · 敌将掉 ' + dmgText(dmg);
     gEl.classList.add('on');
-    setTimeout(function () { gEl.classList.remove('on'); }, 1200);
+    setTimeout(function () { gEl.classList.remove('on'); }, isIdiom ? 2000 : 1500);
+    if (isIdiom) banner('大 将 军 出 阵', word + ' · 打断敌将 · 掉 ' + dmgText(dmg), 'win');
 
     /* 烧掉参战的字格 */
     Array.prototype.forEach.call(myGridEl.querySelectorAll('.fcell'), function (cell) {
@@ -3232,13 +3329,19 @@
     if (foe.surge > 0) foe.surge--;
     /* 蒙学不随关卡提速：基础速度里去掉关卡加成，只认字不搞竞速 */
     var sp = (19 + (isKids() ? 0 : Math.min(st.level, 10) * 1.5)) * (boss ? 0.85 : 1) * paceT(1) * CFG.plaqueSlow * speedRamp(foeProgress()) * levelSpeedMul() * loseMercy() / paceFit();
+    var cb = comboOf(w.c);
     plaques.push({
-      x: W + 46, y: fieldY - 34, target: w,
+      x: W + 46, y: fieldY - 34, target: w, combo: cb,
       hp: boss ? 2 : 1, maxHp: boss ? 2 : 1,
       sp: sp, spMul: 1, seed: Math.random() * 10, boss: boss, hitT: 0, burnT: 0, scorch: 0
     });
     foe.grid.push(w.c);
     renderFoeGrid(w.c);
+    /* 能凑词的牌：牌上挂「营长/大将军」小签，字格描金边，先给个预告 */
+    if (cb) {
+      tipEl.textContent = '拼出「' + w.c + '」→ ' + cb.word + ' · ' + cb.rank + '出战';
+      renderMyGrid(null);
+    }
     if (foe.grid.length >= 4) {
       foe.surge = 2;
       setTimeout(function () {
@@ -4523,6 +4626,16 @@
         ctx.font = 'bold 9px -apple-system,"PingFang SC",serif';
         ctx.fillText('— 令 牌 —', 0, -h / 2 - 2);
       }
+      /* 能凑成词/成语的牌，牌下挂一枚字将签：营长 / 大将军 */
+      if (pl.combo) {
+        var tagW = pl.combo.idiom ? 56 : 36;
+        ctx.fillStyle = pl.combo.idiom ? 'rgba(184,69,58,0.94)' : 'rgba(201,158,86,0.95)';
+        roundRect(-tagW / 2, h / 2 - 1, tagW, 14, 7);
+        ctx.fill();
+        ctx.fillStyle = '#fffdf6';
+        ctx.font = 'bold 9.5px -apple-system,"PingFang SC",serif';
+        ctx.fillText(pl.combo.rank, 0, h / 2 + 6);
+      }
       if (pl.maxHp === 2 && pl.hp === 1) {
         ctx.strokeStyle = 'rgba(90,70,50,0.6)';
         ctx.lineWidth = 1.2;
@@ -4757,6 +4870,7 @@
     st.score = 0; st.hearts = 3; st.level = 1;
     st.shake = 0; st.flash = 0; st.gold = 0; st.lock = false; st.elapsed = 0;
     st.combo = 0; st.maxCombo = 0; st.clearing = false; st.failT = 0;
+    st.words = 0; st.idioms = 0;
     st.streak = 0; st.levelStart = 0;
     /* 续战：带上次的关卡/血量/连胜接着打（点首页「续战」按钮时传入）
        没点续战也从头接上进度：蒙学/会试从记住的关卡开打，殿试每局回到第 1 关 */
@@ -4900,9 +5014,12 @@
     var v = verdictOf(reached);
     document.getElementById('overVerdict').textContent = v.t;
     document.getElementById('overVerdictS').textContent = v.s;
-    document.getElementById('overCombo').textContent =
-      (st.bestStreak >= 2 ? '最 高 连 胜 ' + st.bestStreak + ' 场' : '') +
-      (st.maxCombo >= 2 ? (st.bestStreak >= 2 ? ' · ' : '') + '最 高 连 击 ×' + st.maxCombo : '');
+    var bitsTxt = [];
+    if (st.bestStreak >= 2) bitsTxt.push('最 高 连 胜 ' + st.bestStreak + ' 场');
+    if (st.maxCombo >= 2) bitsTxt.push('最 高 连 击 ×' + st.maxCombo);
+    if (st.words > 0) bitsTxt.push('营 长 ×' + st.words);
+    if (st.idioms > 0) bitsTxt.push('大 将 军 ×' + st.idioms);
+    document.getElementById('overCombo').textContent = bitsTxt.join(' · ');
 
     var rc = document.getElementById('runChars');
     rc.innerHTML = '';
@@ -5180,6 +5297,54 @@
       dmgLabel: function (kind) { return dmgText(CFG.hp[kind]); },
       idiomFeed: function () { var e = idiomFeedEntry([]); return e ? e.c : null; },
       idioms: function () { return IDIOMS4.slice(); },
+      /* 营长/大将军的「打得到吗」抽样：模拟连打 n 块牌，只统计不出阵不写档 */
+      wordsOut: function () { return { words: st.words, idioms: st.idioms }; },
+      gridChars: function () { return myCells.map(function (c) { return c ? c.ch : '·'; }).join(''); },
+      plaqueTags: function () { return plaques.map(function (q) { return q.combo ? q.combo.rank + ':' + q.combo.word : ''; }); },
+      idiomProg: function () { var p = idiomProgress(myCells); return p ? p.w + ' ' + p.hit + '/4 缺' + p.miss.join('') : null; },
+      simFeed: function (v) { NO_WORD_FEED = !v; return !NO_WORD_FEED; },
+      simCombo: function (n) {
+        var saved = myCells.slice();
+        var grid = [], words = 0, idioms = 0, names = [];
+        var setGrid = function () {
+          myCells = [grid[0] || null, grid[1] || null, grid[2] || null, grid[3] || null];
+        };
+        for (var i = 0; i < n; i++) {
+          setGrid();
+          var t = pickTarget();
+          if (!t) continue;
+          if (grid.length >= 4) grid.splice(evictIndex(grid), 1);
+          grid.push({ ch: t.c, p: t.p });
+          setGrid();
+          var idiom = findIdiom(grid);
+          if (idiom) {
+            idioms++; names.push('大将军:' + idiom);
+            var u = idiom.split('');
+            grid = grid.filter(function (x) {
+              var k = u.indexOf(x.ch); if (k >= 0) { u.splice(k, 1); return false; } return true;
+            });
+            continue;
+          }
+          var wd = null, pair = null;
+          for (var a = 0; a < grid.length && !wd; a++) {
+            for (var b = a + 1; b < grid.length; b++) {
+              var w1 = grid[a].ch, w2 = grid[b].ch;
+              if (WORD_SET[w1 + w2]) { wd = w1 + w2; pair = [w1, w2]; break; }
+              if (WORD_SET[w2 + w1]) { wd = w2 + w1; pair = [w2, w1]; break; }
+            }
+          }
+          if (wd) {
+            words++; names.push('营长:' + wd);
+            var uu = pair.slice();
+            grid = grid.filter(function (x) {
+              var k = uu.indexOf(x.ch); if (k >= 0) { uu.splice(k, 1); return false; } return true;
+            });
+          }
+        }
+        myCells = saved;
+        renderMyGrid(null);
+        return { n: n, words: words, idioms: idioms, names: names.slice(0, 80) };
+      },
       sylOf: function (c) { var e = sylEntryFor(c); return e ? e.c : null; },
       clashes: function () { return clashes.length; },
       putMyChars: function (arr) {
