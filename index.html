@@ -4166,6 +4166,11 @@
      人形完全照参考图：空心大头、一笔躯干、对称八字腿、一手持兵器。
      军阶不改变人形，只换装备器材——兵器、甲色、盔沿，越升越齐整。
      --------------------------------------------------------------------- */
+  /* ---------------------------------------------------------------------
+     简笔小人（按用户参考图定稿）
+     人形完全照参考图：空心大头、一笔躯干、对称八字腿、一手持兵器。
+     军阶不改变人形，只换装备器材——每一档都要一眼看出换了装。
+     --------------------------------------------------------------------- */
   function drawWarrior(pal, kick, rank, wp) {
     var ink = pal.deep || 'rgba(26,26,24,0.95)';
     var rk = clamp(rank || 0, 0, RANKS.length - 1);
@@ -4173,7 +4178,7 @@
     var cloth = RANKS[rk].cloth;
     var k = clamp(kick || 0, 0, 1);
     var sway = Math.sin(st.t * 2.1) * 1.1;
-    /* 把颜色压淡，装备只做一层"罩色"，不抢简笔线条 */
+    /* 把颜色压淡，装备做"罩色"，不抢简笔线条 */
     function faint(c, a) { return String(c).replace(/[\d.]+\)$/, a + ')'); }
 
     /* 脚下淡影 */
@@ -4202,7 +4207,7 @@
     /* 躯干：一笔竖线 */
     inkSeg(0, hipY + 1, 0, neckY, 5.2, ink, 8);
 
-    /* 装备一：衣甲。伍长起罩一层布色，百户起换甲色，只罩色不描边 */
+    /* 装备一：衣甲。伍长起罩布色，百户起换甲色，勾一道细边让它看得见 */
     if (rk >= 1) {
       var tw = 6.6, bw2 = rk >= 2 ? 7.8 : 7.0, botY = rk >= 2 ? hipY + 0.5 : hipY + 3;
       ctx.beginPath();
@@ -4211,26 +4216,47 @@
       ctx.lineTo(bw2, botY);
       ctx.lineTo(-bw2, botY);
       ctx.closePath();
-      ctx.fillStyle = rk >= 2 ? faint(plate, 0.42) : faint(cloth, 0.5);
+      ctx.fillStyle = rk >= 2 ? faint(plate, 0.60) : faint(cloth, 0.72);
       ctx.fill();
+      ctx.strokeStyle = faint(ink, 0.55);
+      ctx.lineWidth = 1.1;
+      ctx.stroke();
     }
-    /* 装备二：护心镜，将军才有，一小点金 */
+    /* 装备二：甲片。百户起一排短弧，千户起两排 */
+    if (rk >= 2) {
+      var rows = rk >= 3 ? 2 : 1;
+      for (var rr = 0; rr < rows; rr++) {
+        var ry = neckY + 9 + rr * 6.5;
+        inkCurve(-5.2, ry, 0, ry + 3.2, 5.2, ry, 1.8, faint(ink, 0.62), 20 + rr);
+      }
+    }
+    /* 装备三：护心镜，将军才有 */
     if (rk >= 4) {
-      ctx.beginPath(); ctx.arc(0, neckY + 9.5, 2.6, 0, TAU);
-      ctx.fillStyle = faint('rgba(217,178,63,0.98)', 0.75);
+      ctx.beginPath(); ctx.arc(0, neckY + 9.5, 3.0, 0, TAU);
+      ctx.fillStyle = faint('rgba(217,178,63,0.98)', 0.85);
       ctx.fill();
+      ctx.strokeStyle = faint(ink, 0.7);
+      ctx.lineWidth = 1.1;
+      ctx.stroke();
     }
 
-    /* 装备三：腰带 */
-    inkSeg(-6.0, hipY + 1.6, 6.0, hipY + 1.6, 3.6, ink, 9);
+    /* 装备四：腰带 + 腰结 */
+    inkSeg(-6.0, hipY + 1.6, 6.0, hipY + 1.6, 4.2, ink, 9);
+    if (rk >= 1) {
+      ctx.beginPath(); ctx.arc(0, hipY + 2.4, 1.9, 0, TAU);
+      ctx.fillStyle = faint(plate, 0.85);
+      ctx.fill();
+    }
 
     /* 兵器：握在前手，随踢腿一起甩 */
     var hx = 13.0 - 6 * k, hy = hipY - 1 - 10 * k;
     if (rk === 0) {
       inkSeg(hx - 1, hy + 7, hx + 6, hy - 25, 3.6, 'rgba(126,92,54,0.92)', 14);      /* 木棍 */
     } else if (rk === 1) {
-      inkSeg(hx - 1.5, hy + 3.5, hx + 3, hy - 6, 3.4, ink, 15);                      /* 短刀 */
-      inkSeg(hx + 3, hy - 6, hx + 5, hy - 17, 3.0, 'rgba(196,200,204,0.95)', 16);
+      /* 朴刀：柄 + 护手 + 一段弯刃，一眼看出不是棍 */
+      inkSeg(hx - 1.5, hy + 4.5, hx + 2.6, hy - 4, 3.8, ink, 15);
+      inkSeg(hx + 0.8, hy - 3.0, hx + 5.6, hy - 5.6, 2.8, ink, 17);
+      inkCurve(hx + 3.4, hy - 5, hx + 8.5, hy - 12, hx + 12.5, hy - 23, 3.4, 'rgba(198,203,207,0.97)', 16);
     } else {
       drawWeapon(hx, hy, wp || 'spear', rk, ink, sway);
     }
@@ -4245,20 +4271,31 @@
     ctx.lineWidth = 3.4;
     ctx.stroke();
 
-    /* 装备四：盔。百户起一道盔沿（只描线不填色），将军加盔尖 */
-    if (rk >= 2) {
+    /* 装备五：头顶。
+       伍长：布头巾一条 + 飘带；百户起换盔（淡色填 + 沿口）；千户加盔尖；将军加双雉翎 */
+    if (rk === 1) {
+      inkCurve(-headR + 0.6, headY - 3.4, 0, headY - headR - 1.8, headR - 0.6, headY - 4.4, 3.4, 'rgba(126,92,54,0.95)', 18);
+      inkCurve(-headR + 0.8, headY - 3.8, -12.5, headY - 4 + sway, -16.0, headY + 1 + sway * 1.5, 2.6, 'rgba(126,92,54,0.9)', 19);
+    } else if (rk >= 2) {
       ctx.beginPath();
       ctx.arc(0, headY - 0.6, headR + 0.9, Math.PI * 1.06, Math.PI * 1.94);
-      ctx.strokeStyle = faint(plate, 0.9);
+      ctx.closePath();
+      ctx.fillStyle = faint(plate, 0.45);
+      ctx.fill();
+      ctx.strokeStyle = faint(plate, 0.95);
       ctx.lineWidth = 2.8;
       ctx.stroke();
-      if (rk >= 4) {
+      if (rk >= 3) {
         ctx.beginPath();
-        ctx.moveTo(0, headY - headR - 1.4);
-        ctx.lineTo(0, headY - headR - 4.4);
+        ctx.moveTo(0, headY - headR - 1.6);
+        ctx.lineTo(0, headY - headR - 4.6);
         ctx.strokeStyle = ink;
         ctx.lineWidth = 2.4;
         ctx.stroke();
+      }
+      if (rk >= 4) {
+        inkCurve(-1, headY - headR - 4.0, -9, headY - 17 + sway, -18, headY - 11 + sway * 1.4, 2.4, 'rgba(184,69,58,0.85)', 25);
+        inkCurve(-1, headY - headR - 4.0, -6.5, headY - 20 + sway, -14, headY - 21 + sway * 1.3, 2.2, 'rgba(184,69,58,0.80)', 26);
       }
     }
 
