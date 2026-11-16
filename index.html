@@ -1485,25 +1485,63 @@
     buildFarScene();
   }
 
-  /* 宣纸底纹（缓存） */
+  /* 宣纸底纹（缓存）：纤维 + 颗粒 + 水渍，四边略黄 */
   var paperCanvas = null;
   function buildPaper() {
     paperCanvas = document.createElement('canvas');
     paperCanvas.width = Math.max(1, Math.round(W));
     paperCanvas.height = Math.max(1, Math.round(H));
     var pc = paperCanvas.getContext('2d');
-    pc.fillStyle = '#f8f5ec';
+
+    /* 底：中心亮、四边微黄，像摊开的一张宣纸 */
+    var base = pc.createRadialGradient(W * 0.5, H * 0.38, W * 0.10, W * 0.5, H * 0.50, W * 0.96);
+    base.addColorStop(0, '#faf8f0');
+    base.addColorStop(0.55, '#f8f4e9');
+    base.addColorStop(1, '#f0e8d6');
+    pc.fillStyle = base;
     pc.fillRect(0, 0, W, H);
-    var n = Math.min(1500, (W * H) / 800);
-    for (var i = 0; i < n; i++) {
-      var a = Math.random() * 0.05 + 0.008;
-      pc.fillStyle = 'rgba(152,134,102,' + a.toFixed(3) + ')';
-      var rw = Math.random() * 2 + 0.5;
+
+    /* 纸浆纤维：细长条，顺着造纸方向略斜 */
+    var fn = Math.min(280, (W * H) / 2000);
+    for (var i = 0; i < fn; i++) {
+      var fx = Math.random() * W, fy = Math.random() * H;
+      var len = 4 + Math.random() * 17;
+      var ang = (Math.random() - 0.5) * 0.34;
+      pc.strokeStyle = 'rgba(146,126,92,' + (0.012 + Math.random() * 0.032).toFixed(3) + ')';
+      pc.lineWidth = 0.45 + Math.random() * 0.75;
+      pc.beginPath();
+      pc.moveTo(fx, fy);
+      pc.quadraticCurveTo(
+        fx + len * 0.5, fy + Math.sin(ang) * len * 0.5 + 0.7,
+        fx + len * Math.cos(ang), fy + Math.sin(ang) * len
+      );
+      pc.stroke();
+    }
+
+    /* 颗粒：细密小点，压住纤维的"新纸"感 */
+    var n = Math.min(2800, (W * H) / 380);
+    for (var j = 0; j < n; j++) {
+      pc.fillStyle = 'rgba(150,132,100,' + (Math.random() * 0.045 + 0.006).toFixed(3) + ')';
+      var rw = Math.random() * 1.8 + 0.4;
       pc.fillRect(Math.random() * W, Math.random() * H, rw, rw);
     }
-    var vg = pc.createRadialGradient(W / 2, H * 0.42, W * 0.32, W / 2, H * 0.42, W * 1.0);
-    vg.addColorStop(0, 'rgba(160,145,115,0)');
-    vg.addColorStop(1, 'rgba(160,145,115,0.11)');
+
+    /* 水渍：两三处淡晕，像纸吸过水 */
+    for (var k = 0; k < 3; k++) {
+      var cx = W * (0.16 + Math.random() * 0.68), cy = H * (0.14 + Math.random() * 0.56);
+      var rad = W * (0.13 + Math.random() * 0.20);
+      var wg = pc.createRadialGradient(cx, cy, rad * 0.18, cx, cy, rad);
+      wg.addColorStop(0, 'rgba(168,146,108,0.038)');
+      wg.addColorStop(0.72, 'rgba(168,146,108,0.018)');
+      wg.addColorStop(1, 'rgba(168,146,108,0)');
+      pc.fillStyle = wg;
+      pc.beginPath(); pc.arc(cx, cy, rad, 0, Math.PI * 2); pc.fill();
+    }
+
+    /* 四周压暗，把画面收住 */
+    var vg = pc.createRadialGradient(W / 2, H * 0.42, W * 0.30, W / 2, H * 0.42, W * 1.02);
+    vg.addColorStop(0, 'rgba(150,132,100,0)');
+    vg.addColorStop(1, 'rgba(150,132,100,0.135)');
     pc.fillStyle = vg;
     pc.fillRect(0, 0, W, H);
   }
@@ -1533,6 +1571,39 @@
       };
     }
 
+    /* 干笔：一条线拆成几段、段间留白，像毛笔走到墨尽的飞白 */
+    var drnd = seedRnd(20261116);
+    function dryCurve(ax, ay, cx2, cy2, bx, by, w, col) {
+      var N2 = 16, pts2 = [], i2, t2, m2;
+      for (i2 = 0; i2 <= N2; i2++) {
+        t2 = i2 / N2; m2 = 1 - t2;
+        pts2.push([
+          m2 * m2 * ax + 2 * m2 * t2 * cx2 + t2 * t2 * bx,
+          m2 * m2 * ay + 2 * m2 * t2 * cy2 + t2 * t2 * by
+        ]);
+      }
+      fc.strokeStyle = col;
+      fc.lineCap = 'round';
+      fc.lineJoin = 'round';
+      var pieces = 4;
+      for (var p2 = 0; p2 < pieces; p2++) {
+        if (drnd() < 0.24) continue;                       /* 断笔，飞白就出在这 */
+        var a2 = Math.floor(p2 * N2 / pieces);
+        var b2 = Math.max(a2 + 1, Math.floor((p2 + 0.86) * N2 / pieces));
+        fc.lineWidth = w * (0.6 + drnd() * 0.95);
+        fc.globalAlpha = 0.65 + drnd() * 0.35;
+        fc.beginPath();
+        fc.moveTo(pts2[a2][0], pts2[a2][1]);
+        for (i2 = a2 + 1; i2 <= b2; i2++) fc.lineTo(pts2[i2][0], pts2[i2][1]);
+        fc.stroke();
+      }
+      fc.globalAlpha = 1;
+    }
+    function dryLine(x0, y0, x1, y1, w, col) {
+      var jx = (drnd() - 0.5) * 1.8, jy = (drnd() - 0.5) * 1.8;
+      dryCurve(x0, y0, (x0 + x1) / 2 + jx, (y0 + y1) / 2 + jy, x1, y1, w, col);
+    }
+
     /* 天光：极淡青灰，往下化进纸色 */
     var sky = fc.createLinearGradient(0, 0, 0, horizon);
     sky.addColorStop(0, 'rgba(146,160,166,0.11)');
@@ -1552,31 +1623,67 @@
         var h = peakH * (0.4 + rnd() * 0.6) * edge;
         pts.push({ x: x, y: baseY - h });
       }
-      fc.beginPath();
-      fc.moveTo(-12, horizon);
-      fc.lineTo(pts[0].x, pts[0].y);
-      for (var j = 1; j < pts.length; j++) {
-        var a = pts[j - 1], b = pts[j];
-        var mx = (a.x + b.x) / 2;
-        fc.quadraticCurveTo(mx, Math.min(a.y, b.y) - peakH * 0.06, b.x, b.y);
+      function trace(off) {
+        fc.beginPath();
+        fc.moveTo(-12, horizon);
+        fc.lineTo(pts[0].x, pts[0].y + off);
+        for (var j = 1; j < pts.length; j++) {
+          var a = pts[j - 1], b = pts[j];
+          var mx = (a.x + b.x) / 2;
+          fc.quadraticCurveTo(mx, Math.min(a.y, b.y) - peakH * 0.06 + off, b.x, b.y + off);
+        }
+        fc.lineTo(W + 12, horizon);
+        fc.closePath();
       }
-      fc.lineTo(W + 12, horizon);
-      fc.closePath();
+
+      /* 一层湿染：山脚化进纸里 */
+      trace(0);
       var g = fc.createLinearGradient(0, baseY - peakH, 0, horizon);
-      g.addColorStop(0, 'rgba(' + hue + ',' + (alpha * 1.2).toFixed(3) + ')');
-      g.addColorStop(0.6, 'rgba(' + hue + ',' + alpha.toFixed(3) + ')');
+      g.addColorStop(0, 'rgba(' + hue + ',' + (alpha * 1.15).toFixed(3) + ')');
+      g.addColorStop(0.45, 'rgba(' + hue + ',' + (alpha * 0.82).toFixed(3) + ')');
       g.addColorStop(1, 'rgba(' + hue + ',0)');
       fc.fillStyle = g;
       fc.fill();
-      fc.strokeStyle = 'rgba(' + hue + ',' + (alpha * 1.45).toFixed(3) + ')';
-      fc.lineWidth = 1.05;
-      fc.stroke();
+
+      /* 二层积墨：沿山脊往下压一道深，山才有厚薄、才不糊成一片 */
+      trace(0);
+      fc.save();
+      fc.clip();
+      var g2 = fc.createLinearGradient(0, baseY - peakH * 1.06, 0, baseY);
+      g2.addColorStop(0, 'rgba(' + hue + ',' + (alpha * 0.95).toFixed(3) + ')');
+      g2.addColorStop(0.52, 'rgba(' + hue + ',' + (alpha * 0.26).toFixed(3) + ')');
+      g2.addColorStop(1, 'rgba(' + hue + ',0)');
+      fc.fillStyle = g2;
+      fc.fillRect(0, baseY - peakH * 1.06, W, peakH * 1.06);
+      /* 皴笔：几道短擦，从山脊往下扫，出石纹 */
+      fc.strokeStyle = 'rgba(' + hue + ',' + (alpha * 0.72).toFixed(3) + ')';
+      fc.lineCap = 'round';
+      for (var q = 0; q < 5; q++) {
+        var sp = pts[1 + Math.floor(rnd() * (pts.length - 2))];
+        var sx2 = sp.x + (rnd() - 0.5) * W * 0.10;
+        var sy2 = sp.y + rnd() * peakH * 0.30;
+        fc.lineWidth = 0.7 + rnd() * 0.8;
+        fc.beginPath();
+        fc.moveTo(sx2, sy2);
+        fc.quadraticCurveTo(sx2 + 2.6, sy2 + 4.2, sx2 + 1.0, sy2 + 8 + rnd() * 5);
+        fc.stroke();
+      }
+      fc.restore();
+
+      /* 山脊：干笔断续，笔断意连 */
+      var rc = 'rgba(' + hue + ',' + (alpha * 1.7).toFixed(3) + ')';
+      for (var s2 = 1; s2 < pts.length; s2++) {
+        var a3 = pts[s2 - 1], b3 = pts[s2];
+        dryCurve(a3.x, a3.y, (a3.x + b3.x) / 2, Math.min(a3.y, b3.y) - peakH * 0.06,
+          b3.x, b3.y, 1.5, rc);
+      }
     }
 
-    /* 三层山：越远越淡越高、越近越浓越低 */
-    ridge(11, horizon * 0.30, horizon * 0.94, 0.038, '116,130,138');
-    ridge(29, horizon * 0.24, horizon * 0.955, 0.065, '102,116,124');
-    ridge(47, horizon * 0.155, horizon * 0.985, 0.092, '84,97,105');
+    /* 四层山：越远越淡越高、越近越浓越低 */
+    ridge(7, horizon * 0.330, horizon * 0.922, 0.024, '130,142,150');
+    ridge(11, horizon * 0.300, horizon * 0.940, 0.042, '116,130,138');
+    ridge(29, horizon * 0.240, horizon * 0.955, 0.072, '102,116,124');
+    ridge(47, horizon * 0.155, horizon * 0.985, 0.102, '84,97,105');
 
     /* 山腰雾：横向白气，把山断成两层 */
     function mist(y, h, a) {
@@ -1591,34 +1698,41 @@
     mist(horizon * 0.94, W * 0.035, 0.55);
 
     /* 城楼：压在雾脚，只勾剪影 */
+    var TOWER_HH = Math.min(66, W * 0.15);
     (function cityTower() {
       var cx = W / 2;
-      var hh = Math.min(66, W * 0.15);
+      var hh = TOWER_HH;
       var w = hh * 1.18;
-      var ink = 'rgba(64,74,80,0.17)';
-      var wash = 'rgba(104,114,118,0.085)';
-      fc.strokeStyle = ink;
-      fc.lineWidth = 1.3;
+      var ink = 'rgba(64,74,80,0.20)';
+      var wash = 'rgba(104,114,118,0.075)';
       fc.lineJoin = 'round';
+
+      /* 楼子轮廓一律用干笔：墙线不该是尺子画出来的 */
+      function dryRect(x0, y0, ww, hh2, lw) {
+        dryLine(x0, y0, x0 + ww, y0, lw, ink);
+        dryLine(x0 + ww, y0, x0 + ww, y0 + hh2, lw, ink);
+        dryLine(x0 + ww, y0 + hh2, x0, y0 + hh2, lw, ink);
+        dryLine(x0, y0 + hh2, x0, y0, lw, ink);
+      }
 
       /* 夯土台基 + 垛口 */
       var baseTop = horizon - hh * 0.30;
       fc.fillStyle = wash;
       fc.fillRect(cx - w * 0.5, baseTop, w, hh * 0.30);
-      fc.strokeRect(cx - w * 0.5, baseTop, w, hh * 0.30);
+      dryRect(cx - w * 0.5, baseTop, w, hh * 0.30, 1.5);
       var teeth = 4;
       for (var i = 0; i < teeth; i++) {
         var tw = w / (teeth * 2 - 1);
         fc.fillStyle = wash;
         fc.fillRect(cx - w * 0.5 + i * tw * 2, baseTop - hh * 0.055, tw, hh * 0.055);
-        fc.strokeRect(cx - w * 0.5 + i * tw * 2, baseTop - hh * 0.055, tw, hh * 0.055);
+        dryRect(cx - w * 0.5 + i * tw * 2, baseTop - hh * 0.055, tw, hh * 0.055, 1.2);
       }
 
       /* 楼身 */
       var bodyTop = baseTop - hh * 0.34;
-      fc.fillStyle = 'rgba(96,106,110,0.13)';
+      fc.fillStyle = 'rgba(96,106,110,0.12)';
       fc.fillRect(cx - w * 0.29, bodyTop, w * 0.58, hh * 0.34);
-      fc.strokeRect(cx - w * 0.29, bodyTop, w * 0.58, hh * 0.34);
+      dryRect(cx - w * 0.29, bodyTop, w * 0.58, hh * 0.34, 1.6);
       /* 两扇窗 */
       fc.fillStyle = 'rgba(248,245,236,0.55)';
       fc.fillRect(cx - w * 0.17, bodyTop + hh * 0.09, w * 0.10, hh * 0.10);
@@ -1633,24 +1747,19 @@
       fc.lineTo(cx + w * 0.14, ridgeY);
       fc.quadraticCurveTo(cx + w * 0.30, ridgeY + hh * 0.10, cx + w * 0.46, eaveY - hh * 0.02);
       fc.closePath();
-      fc.fillStyle = 'rgba(74,84,90,0.13)';
+      fc.fillStyle = 'rgba(74,84,90,0.12)';
       fc.fill();
-      fc.stroke();
+      /* 檐口两坡：干笔轻扫，笔到墨未尽，留出飞白 */
+      dryCurve(cx - w * 0.46, eaveY - hh * 0.02, cx - w * 0.30, ridgeY + hh * 0.10, cx - w * 0.14, ridgeY, 1.8, ink);
+      dryCurve(cx + w * 0.46, eaveY - hh * 0.02, cx + w * 0.30, ridgeY + hh * 0.10, cx + w * 0.14, ridgeY, 1.8, ink);
+      /* 正脊 */
+      dryLine(cx - w * 0.14, ridgeY, cx + w * 0.14, ridgeY, 2.0, ink);
       /* 翘角两笔 */
-      fc.beginPath();
-      fc.moveTo(cx - w * 0.46, eaveY - hh * 0.02);
-      fc.quadraticCurveTo(cx - w * 0.54, eaveY - hh * 0.10, cx - w * 0.50, eaveY - hh * 0.15);
-      fc.moveTo(cx + w * 0.46, eaveY - hh * 0.02);
-      fc.quadraticCurveTo(cx + w * 0.54, eaveY - hh * 0.10, cx + w * 0.50, eaveY - hh * 0.15);
-      fc.stroke();
+      dryCurve(cx - w * 0.46, eaveY - hh * 0.02, cx - w * 0.54, eaveY - hh * 0.10, cx - w * 0.50, eaveY - hh * 0.15, 1.6, ink);
+      dryCurve(cx + w * 0.46, eaveY - hh * 0.02, cx + w * 0.54, eaveY - hh * 0.10, cx + w * 0.50, eaveY - hh * 0.15, 1.6, ink);
 
       /* 旗杆 + 朱砂小幡 */
-      fc.strokeStyle = 'rgba(64,74,80,0.20)';
-      fc.lineWidth = 1;
-      fc.beginPath();
-      fc.moveTo(cx, ridgeY);
-      fc.lineTo(cx, ridgeY - hh * 0.16);
-      fc.stroke();
+      dryLine(cx, ridgeY, cx, ridgeY - hh * 0.16, 1.2, 'rgba(64,74,80,0.24)');
       fc.fillStyle = 'rgba(184,69,58,0.30)';
       fc.beginPath();
       fc.moveTo(cx, ridgeY - hh * 0.16);
@@ -1658,6 +1767,71 @@
       fc.lineTo(cx, ridgeY - hh * 0.085);
       fc.closePath();
       fc.fill();
+    })();
+
+    /* 城墙：从城楼台基向两侧延伸到画边，带稀疏垛口 */
+    (function cityWall() {
+      var cx = W / 2;
+      var hh = TOWER_HH;
+      var top = horizon - hh * 0.30;
+      var hgt = hh * 0.26;
+      var ink = 'rgba(64,74,80,0.13)';
+      var wash = 'rgba(104,114,118,0.075)';
+      [[0, cx - hh * 0.59], [cx + hh * 0.59, W]].forEach(function (seg) {
+        var x0 = seg[0], x1 = seg[1];
+        if (x1 - x0 < 14) return;
+        fc.fillStyle = wash;
+        fc.fillRect(x0, top, x1 - x0, hgt);
+        fc.strokeStyle = ink;
+        fc.lineWidth = 1;
+        dryLine(x0, top, x1, top, 1.1, ink);
+        dryLine(x0, top + hgt, x1, top + hgt, 1.1, ink);
+        /* 垛口 */
+        var tw = hh * 0.115;
+        for (var x = x0 + tw * 0.4; x + tw <= x1; x += tw * 1.9) {
+          fc.fillStyle = wash;
+          fc.fillRect(x, top - hgt * 0.22, tw, hgt * 0.22);
+          dryLine(x, top - hgt * 0.22, x + tw, top - hgt * 0.22, 1.0, ink);
+        }
+        /* 墙脚一道横线，接进雾里 */
+        fc.strokeStyle = ink;
+        fc.beginPath(); fc.moveTo(x0, top + hgt); fc.lineTo(x1, top + hgt); fc.stroke();
+      });
+    })();
+
+    /* 远处旌旗两面：压在地平线上，让"军营守关"的意思更足 */
+    (function banners() {
+      [W * 0.14, W * 0.86].forEach(function (bx, i) {
+        var topY = horizon - TOWER_HH * (i === 0 ? 0.62 : 0.70);
+        var hgt = horizon - topY;
+        fc.strokeStyle = 'rgba(64,74,80,0.16)';
+        fc.lineWidth = 1;
+        fc.beginPath(); fc.moveTo(bx, horizon); fc.lineTo(bx, topY); fc.stroke();
+        fc.fillStyle = 'rgba(184,69,58,0.24)';
+        fc.beginPath();
+        fc.moveTo(bx, topY);
+        fc.quadraticCurveTo(bx + hgt * 0.24, topY + hgt * 0.30, bx + hgt * 0.06, topY + hgt * 0.52);
+        fc.quadraticCurveTo(bx + hgt * 0.10, topY + hgt * 0.28, bx, topY + hgt * 0.10);
+        fc.closePath();
+        fc.fill();
+        fc.strokeStyle = 'rgba(64,74,80,0.14)';
+        fc.lineWidth = 0.8;
+        fc.stroke();
+      });
+    })();
+
+    /* 天边雁阵：三只"人"字，一笔一只，极淡 */
+    (function geese() {
+      fc.strokeStyle = 'rgba(84,97,105,0.16)';
+      fc.lineWidth = 1.2;
+      var gx = W * 0.68, gy = horizon * 0.40;
+      [[0, 0], [13, -7], [24, -12]].forEach(function (off) {
+        var x = gx + off[0], y = gy + off[1];
+        fc.beginPath();
+        fc.moveTo(x - 4, y - 2);
+        fc.quadraticCurveTo(x, y + 1.5, x + 4, y - 2);
+        fc.stroke();
+      });
     })();
 
     /* 两侧山脚：几笔松影，压住画面两头 */
@@ -1774,6 +1948,15 @@
     try { bestTime = parseFloat(localStorage.getItem(saveKey('pzqb_besttime')) || '0') || 0; } catch (e) { bestTime = 0; }
     try { bestLv = parseInt(localStorage.getItem(saveKey('pzqb_bestlv')) || '0', 10) || 0; } catch (e) { bestLv = 0; }
     try { progLv = Math.max(1, parseInt(localStorage.getItem(saveKey('pzqb_prog')) || '1', 10) || 1); } catch (e) { progLv = 1; }
+    try { loseStreak = parseInt(localStorage.getItem(saveKey('pzqb_lose')) || '0', 10) || 0; } catch (e) { loseStreak = 0; }
+  }
+
+  /* 连败保护（仅会试）：连输 3 局起，木牌速度与出牌间隔按档放慢，
+     每再输 3 局再降一档，最多放慢 30%；破关一次就清零复原。 */
+  function loseMercy() {
+    if (GAME_MODE !== 'pro' || loseStreak < 3) return 1;
+    var step = Math.floor((loseStreak - 3) / 3) + 1;   /* 3局=1档 6局=2档 9局+=3档 */
+    return Math.max(0.70, 0.90 - (step - 1) * 0.10);   /* 0.90 / 0.80 / 0.70 */
   }
 
   /* 关卡进度：只进不退，退出/输掉都不清（殿试不记，保持每局从第 1 关） */
@@ -1813,6 +1996,7 @@
   var best = 0;
   var bestLv = 0;
   var progLv = 1;   /* 关卡进度：蒙学/会试永久保留，下次直接从这一关开打 */
+  var loseStreak = 0;  /* 连败计数（会试专用）：连输 3 局起，对手自动放慢 */
   var bestTime = 0;      /* 进阶版：破一关的最快用时（秒） */
   loadModeProfile();
 
@@ -2004,8 +2188,8 @@
       label: '蒙学', tag: '识字启蒙',
       pace: 1,               /* paceT 的返回值：1 = 原速（慢） */
       plaqueSlow: 0.62,      /* 木牌再打六二折，慢慢飘过来 */
-      accel: { timeDiv: 90, charDiv: 30, wTime: 0.22, wChar: 0.32, cap: 0.25 },
-      lvBase: function (lv) { return lv <= 5 ? 1 : 1 + Math.min(lv - 5, 10) * 0.012; },
+      accel: { timeDiv: 90, charDiv: 30, wTime: 0.22, wChar: 0.32, cap: 0.06 },
+      lvBase: function (lv) { return 1; },   /* 不随关卡提速：蒙学只认字，不搞竞速 */
       skill: { base: 0.88, span: 0.32, from: 6 },
       wrongMul: 1,           /* 选错不加速木牌：认字阶段不拿速度惩罚孩子 */
       ladderWait: 1450,      /* 选错后停久一点，把正确的字看清楚 */
@@ -3030,7 +3214,7 @@
         foe.kickT = 0.36;
         foe.state = 'idle';
         var mercy = alivePlaques() >= 2 ? 1.9 : 1;
-        foe.idleT = rand(1.6, 2.6) / accelF() * paceT(2.6) * spawnRamp(foeProgress()) * mercy * levelSpawnMul() * paceFit();
+        foe.idleT = rand(1.6, 2.6) / accelF() * paceT(2.6) * spawnRamp(foeProgress()) * mercy * levelSpawnMul() * paceFit() / loseMercy();
         /* 人体极限护栏（殿试）：视觉选择反应约 0.3~0.5 秒 + 拼音认读
            约 0.3~0.4 秒 + 点击确认约 0.2 秒。两块牌的间隔低于 0.9 秒
            就不再是"难"，而是生理上不可能——殿试最快只压到这个临界点。
@@ -3046,7 +3230,8 @@
     spawnTotal++;
     var boss = (st.level % 5 === 0) || foe.surge > 0;
     if (foe.surge > 0) foe.surge--;
-    var sp = (19 + Math.min(st.level, 10) * 1.5) * (boss ? 0.85 : 1) * paceT(1) * CFG.plaqueSlow * speedRamp(foeProgress()) * levelSpeedMul() / paceFit();
+    /* 蒙学不随关卡提速：基础速度里去掉关卡加成，只认字不搞竞速 */
+    var sp = (19 + (isKids() ? 0 : Math.min(st.level, 10) * 1.5)) * (boss ? 0.85 : 1) * paceT(1) * CFG.plaqueSlow * speedRamp(foeProgress()) * levelSpeedMul() * loseMercy() / paceFit();
     plaques.push({
       x: W + 46, y: fieldY - 34, target: w,
       hp: boss ? 2 : 1, maxHp: boss ? 2 : 1,
@@ -3164,6 +3349,11 @@
     /* 一场胜利 = 一个连胜，满 5 场封"常胜将军"；成绩按版本分开记 */
     var streak = lvCleared;
     st.streak = streak;
+    /* 破关 = 连败计数清零，连败保护立刻复原 */
+    if (loseStreak > 0) {
+      loseStreak = 0;
+      try { localStorage.setItem(saveKey('pzqb_lose'), '0'); } catch (e) {}
+    }
     if (streak > st.bestStreak) {
       st.bestStreak = streak;
       try { localStorage.setItem(saveKey('pzqb_beststreak'), String(streak)); } catch (e) {}
@@ -3713,27 +3903,28 @@
     { k: '吴', c: '#B8453A' },
     { k: '董', c: '#6B5B7B' }
   ];
+  /* 每员将一件史实兵器：w = spear枪 / broadsword大刀 / serpent蛇矛 / halberd戟 / axe斧 / sword剑 / bow弓 */
   var HEROES = [
-    { n: '赵云', f: '蜀', t: '一身是胆' },
-    { n: '关羽', f: '蜀', t: '威震华夏' },
-    { n: '张飞', f: '蜀', t: '万人之敌' },
-    { n: '马超', f: '蜀', t: '锦马超' },
-    { n: '黄忠', f: '蜀', t: '老当益壮' },
-    { n: '张辽', f: '魏', t: '威震逍遥津' },
-    { n: '许褚', f: '魏', t: '虎痴' },
-    { n: '典韦', f: '魏', t: '古之恶来' },
-    { n: '夏侯惇', f: '魏', t: '拔矢啖睛' },
-    { n: '张郃', f: '魏', t: '巧变' },
-    { n: '徐晃', f: '魏', t: '长驱直入' },
-    { n: '曹仁', f: '魏', t: '天人将军' },
-    { n: '周瑜', f: '吴', t: '儒将风流' },
-    { n: '甘宁', f: '吴', t: '锦帆百骑' },
-    { n: '太史慈', f: '吴', t: '信义笃烈' },
-    { n: '吕蒙', f: '吴', t: '士别三日' },
-    { n: '陆逊', f: '吴', t: '火烧连营' },
-    { n: '黄盖', f: '吴', t: '苦肉诈降' },
-    { n: '吕布', f: '董', t: '人中吕布' },
-    { n: '华雄', f: '董', t: '西凉猛将' }
+    { n: '赵云', f: '蜀', t: '一身是胆', w: 'spear' },
+    { n: '关羽', f: '蜀', t: '威震华夏', w: 'broadsword' },
+    { n: '张飞', f: '蜀', t: '万人之敌', w: 'serpent' },
+    { n: '马超', f: '蜀', t: '锦马超', w: 'spear' },
+    { n: '黄忠', f: '蜀', t: '老当益壮', w: 'bow' },
+    { n: '张辽', f: '魏', t: '威震逍遥津', w: 'halberd' },
+    { n: '许褚', f: '魏', t: '虎痴', w: 'broadsword' },
+    { n: '典韦', f: '魏', t: '古之恶来', w: 'halberd' },
+    { n: '夏侯惇', f: '魏', t: '拔矢啖睛', w: 'spear' },
+    { n: '张郃', f: '魏', t: '巧变', w: 'spear' },
+    { n: '徐晃', f: '魏', t: '长驱直入', w: 'axe' },
+    { n: '曹仁', f: '魏', t: '天人将军', w: 'broadsword' },
+    { n: '周瑜', f: '吴', t: '儒将风流', w: 'sword' },
+    { n: '甘宁', f: '吴', t: '锦帆百骑', w: 'broadsword' },
+    { n: '太史慈', f: '吴', t: '信义笃烈', w: 'bow' },
+    { n: '吕蒙', f: '吴', t: '士别三日', w: 'sword' },
+    { n: '陆逊', f: '吴', t: '火烧连营', w: 'sword' },
+    { n: '黄盖', f: '吴', t: '苦肉诈降', w: 'broadsword' },
+    { n: '吕布', f: '董', t: '人中吕布', w: 'halberd' },
+    { n: '华雄', f: '董', t: '西凉猛将', w: 'broadsword' }
   ];
   var HERO_KEY = 'pzqb_hero';
   function factionColor(k) {
@@ -3787,266 +3978,288 @@
     } catch (e) {}
   }
 
-  function drawWarrior(pal, kick, rank) {
-    var ink = pal.ink;
-    var acc = pal.accent;
-    var rk = clamp(rank || 0, 0, RANKS.length - 1);
-    var plate = RANKS[rk].armor;
-    var k = clamp(kick || 0, 0, 1);
-    var sway = Math.sin(st.t * 2.1) * 1.1;
+  /* 七种史实兵器：握在前手 hx,hy，指向右上；rk 越高杆越贵重（金箍、缠绳） */
+  function drawWeapon(hx, hy, wp, rk, ink, sway) {
+    var wood = rk >= 4 ? 'rgba(84,58,30,0.95)' : 'rgba(120,92,54,0.95)';
+    var steel = 'rgba(206,212,216,0.95)';
+    var gold = 'rgba(201,162,39,0.95)';
+    var tassel = 'rgba(184,69,58,0.92)';
 
-    /* 脚下淡影 */
-    ctx.fillStyle = 'rgba(96,106,108,0.10)';
-    ctx.beginPath(); ctx.ellipse(0, 1, 16, 3.4, 0, 0, TAU); ctx.fill();
-
-    ctx.save();
-    ctx.rotate(-0.10 * k);           /* 抬腿时身子后仰 */
-
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = 2.2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    var hipY = -31;
-    var neckY = -51 + sway * 0.3;
-    var headY = -60 + sway * 0.5;
-    var shoulderY = neckY + 3;
-
-    /* 披风 / 大氅：百户起才有，压在身子后面 */
-    if (rk >= 2) {
-      ctx.beginPath();
-      ctx.moveTo(-3.6, neckY + 1.5);
-      ctx.quadraticCurveTo(-13 - sway, hipY - 4, -15.5 - sway * 1.4, hipY + 13);
-      ctx.quadraticCurveTo(-8, hipY + 17, -1.5, hipY + 8);
-      ctx.closePath();
-      ctx.fillStyle = rk >= 4 ? 'rgba(58,62,66,0.92)' : 'rgba(168,70,60,0.88)';
-      ctx.fill();
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-
-    /* 躯干：小兵一根线，伍长起穿短褐，百户起换甲 */
-    if (rk === 0) {
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.moveTo(0, hipY);
-      ctx.lineTo(0, neckY);
-      ctx.stroke();
-    } else {
-      var tw = 6.2, bw = rk >= 2 ? 7.6 : 6.4, botY = rk >= 2 ? hipY - 1 : hipY + 3;
-      ctx.beginPath();
-      ctx.moveTo(-tw, neckY + 1);
-      ctx.lineTo(tw, neckY + 1);
-      ctx.lineTo(bw, botY);
-      ctx.lineTo(-bw, botY);
-      ctx.closePath();
-      ctx.fillStyle = plate;
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      /* 鳞甲：千户起，两排短弧 */
+    /* 长杆：枪/蛇矛/大刀/戟/斧共用，越到高阶越粗 */
+    function pole(topX, topY) {
+      ctx.strokeStyle = wood;
+      ctx.lineWidth = rk >= 3 ? 2.1 : 1.8;
+      ctx.beginPath(); ctx.moveTo(hx + 1, hy + 15); ctx.quadraticCurveTo(hx + 3, hy - 14, topX, topY); ctx.stroke();
+      /* 高阶金箍两道 + 缠绳一段 */
       if (rk >= 3) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(58,48,24,0.75)';
-        ctx.lineWidth = 1.1;
-        for (var r = 0; r < 2; r++) {
-          var ry = neckY + 9 + r * 7;
-          ctx.beginPath();
-          ctx.moveTo(-5.4, ry);
-          ctx.quadraticCurveTo(0, ry + 3.4, 5.4, ry);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-      /* 护心镜：将军 */
-      if (rk >= 4) {
-        ctx.beginPath(); ctx.arc(0, neckY + 10, 3.1, 0, TAU);
-        ctx.fillStyle = 'rgba(244,231,188,0.96)';
-        ctx.fill();
-        ctx.lineWidth = 1.3;
-        ctx.stroke();
-      }
-      /* 肩甲：百户起 */
-      if (rk >= 2) {
-        [-1, 1].forEach(function (sgn) {
-          ctx.beginPath();
-          ctx.ellipse(sgn * 6.6, neckY + 3.2, 3.6, 2.4, sgn * 0.25, 0, TAU);
-          ctx.fillStyle = plate;
-          ctx.fill();
-          ctx.lineWidth = 1.4;
-          ctx.stroke();
-        });
-      } else {
-        /* 伍长：布袖 */
-        [-1, 1].forEach(function (sgn) {
-          ctx.beginPath();
-          ctx.ellipse(sgn * 5.8, neckY + 4, 2.8, 2.2, 0, 0, TAU);
-          ctx.fillStyle = RANKS[rk].cloth;
-          ctx.fill();
-        });
+        ctx.strokeStyle = gold; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(hx + 3.4, hy - 8); ctx.lineTo(hx + 4.6, hy - 11); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(hx + 5, hy - 22); ctx.lineTo(hx + 5.8, hy - 25); ctx.stroke();
       }
     }
-
-    /* 腰带 + 腰结 */
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = 2.6;
-    ctx.beginPath();
-    ctx.moveTo(-5.5, hipY + 3);
-    ctx.lineTo(5.5, hipY + 3);
-    ctx.stroke();
-    if (rk >= 1) {
-      ctx.beginPath(); ctx.arc(0, hipY + 3.4, 2.1, 0, TAU);
-      ctx.fillStyle = plate;
+    /* 钢制锋刃描边 */
+    function steelFill() {
+      ctx.fillStyle = steel;
       ctx.fill();
-      ctx.lineWidth = 1.3;
-      ctx.stroke();
-    }
-
-    /* 支撑腿 */
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = 2.1;
-    ctx.beginPath();
-    ctx.moveTo(0, hipY);
-    ctx.quadraticCurveTo(-3, hipY + 17, -7, -1);
-    ctx.stroke();
-
-    /* 踢出的那条腿：抬到接近水平 */
-    var fx = 9 + 19 * k;
-    var fy = -1 - 27 * k;
-    ctx.beginPath();
-    ctx.moveTo(0, hipY);
-    ctx.quadraticCurveTo(5 + 8 * k, hipY + 15 - 4 * k, fx, fy);
-    ctx.stroke();
-
-    /* 脚掌 */
-    if (k > 0.15) {
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(fx - 2, fy);
-      ctx.lineTo(fx + 5, fy - 1);
-      ctx.stroke();
-    }
-
-    /* 兵器：握在前手，随踢腿一起甩 */
-    var hx = 13 - 6 * k, hy = hipY - 2 - 10 * k;
-    if (rk === 0) {
-      /* 一根木棍 */
-      ctx.strokeStyle = 'rgba(138,101,56,0.92)';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath(); ctx.moveTo(hx - 1, hy + 7); ctx.lineTo(hx + 6, hy - 25); ctx.stroke();
-    } else if (rk === 1) {
-      /* 短刀 */
       ctx.strokeStyle = ink;
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(hx - 1.5, hy + 3.5); ctx.lineTo(hx + 3, hy - 6); ctx.stroke();
-      ctx.strokeStyle = 'rgba(190,196,200,0.95)';
-      ctx.lineWidth = 2.2;
-      ctx.beginPath(); ctx.moveTo(hx + 3, hy - 6); ctx.lineTo(hx + 5, hy - 17); ctx.stroke();
-    } else {
-      /* 长矛；将军换成戟 */
-      ctx.strokeStyle = 'rgba(120,92,54,0.95)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+    /* 枪头红缨 */
+    function tuft(x, y) {
+      ctx.strokeStyle = tassel;
       ctx.lineWidth = 1.8;
-      ctx.beginPath(); ctx.moveTo(hx + 1, hy + 15); ctx.lineTo(hx + 7, hy - 38); ctx.stroke();
-      ctx.fillStyle = 'rgba(206,212,216,0.95)';
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 4.5, y + 6 + sway * 0.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 1, y + 7 + sway * 0.8); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 6.5, y + 3 + sway * 0.4); ctx.stroke();
+    }
+
+    if (wp === 'sword') {
+      /* 剑：短而直，护手十字；将军金护手 */
+      ctx.strokeStyle = ink; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(hx - 2.5, hy + 3); ctx.lineTo(hx + 4, hy - 6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(hx - 4, hy - 5.5); ctx.lineTo(hx + 5.5, hy - 7.5); ctx.stroke();   /* 护手 */
+      ctx.strokeStyle = steel; ctx.lineWidth = 2.6;
+      ctx.beginPath(); ctx.moveTo(hx + 4, hy - 6); ctx.lineTo(hx + 8, hy - 30); ctx.stroke();
+      ctx.strokeStyle = ink; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(hx + 8, hy - 30); ctx.lineTo(hx + 4, hy - 6); ctx.stroke();
+      if (rk >= 4) { ctx.fillStyle = gold; ctx.fillRect(hx - 4.5, hy - 7.5, 10.5, 2.6); }
+    } else if (wp === 'bow') {
+      /* 弓：弧身在手中，弦绷直；将军金弓梢 */
+      ctx.strokeStyle = wood;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(hx - 3, hy + 9);
+      ctx.quadraticCurveTo(hx + 15, hy - 2, hx + 7, hy - 26);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(150,156,160,0.9)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(hx - 3, hy + 9); ctx.lineTo(hx + 7, hy - 26);
+      ctx.stroke();
+      if (rk >= 4) { ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(hx + 7, hy - 26, 1.8, 0, TAU); ctx.fill(); }
+      /* 搭在弦上的箭 */
+      ctx.strokeStyle = wood; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(hx + 1, hy + 2); ctx.lineTo(hx + 13, hy - 16); ctx.stroke();
+      ctx.fillStyle = steel;
+      ctx.beginPath();
+      ctx.moveTo(hx + 13, hy - 16); ctx.lineTo(hx + 15.5, hy - 21); ctx.lineTo(hx + 10.5, hy - 18.5);
+      ctx.closePath(); ctx.fill();
+    } else if (wp === 'serpent') {
+      /* 丈八蛇矛：矛头作蛇形，左右游走 */
+      pole(hx + 7, hy - 38);
+      ctx.strokeStyle = steel;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(hx + 7, hy - 38);
+      ctx.quadraticCurveTo(hx + 2, hy - 46, hx + 8, hy - 50);
+      ctx.quadraticCurveTo(hx + 14, hy - 53, hx + 9, hy - 58);
+      ctx.stroke();
+      ctx.strokeStyle = ink; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(hx + 7, hy - 38);
+      ctx.quadraticCurveTo(hx + 3.5, hy - 46, hx + 9.5, hy - 49);
+      ctx.stroke();
+      tuft(hx + 7, hy - 36);
+    } else if (wp === 'broadsword') {
+      /* 青龙偃月刀：长杆 + 宽刃带勾，刃背带小枝 */
+      pole(hx + 6.5, hy - 34);
+      ctx.beginPath();
+      ctx.moveTo(hx + 6.5, hy - 34);
+      ctx.quadraticCurveTo(hx + 17, hy - 40, hx + 18.5, hy - 54);
+      ctx.quadraticCurveTo(hx + 10, hy - 50, hx + 5.5, hy - 42);
+      ctx.closePath();
+      steelFill();
+      /* 刃背小枝 */
+      ctx.strokeStyle = ink; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(hx + 5.5, hy - 42); ctx.lineTo(hx + 1.5, hy - 46); ctx.stroke();
+      /* 刀缨 */
+      tuft(hx + 6.5, hy - 32);
+    } else if (wp === 'halberd') {
+      /* 方天画戟：中锋直刺 + 一弯月牙 */
+      pole(hx + 7, hy - 38);
+      ctx.beginPath();
+      ctx.moveTo(hx + 7, hy - 52);
+      ctx.lineTo(hx + 4.2, hy - 38);
+      ctx.lineTo(hx + 9.8, hy - 38);
+      ctx.closePath();
+      steelFill();
+      ctx.beginPath();
+      ctx.moveTo(hx + 7, hy - 30);
+      ctx.quadraticCurveTo(hx + 16, hy - 33, hx + 17.5, hy - 43);
+      ctx.quadraticCurveTo(hx + 12.5, hy - 36.5, hx + 7, hy - 36);
+      ctx.closePath();
+      steelFill();
+      tuft(hx + 7, hy - 36);
+    } else if (wp === 'axe') {
+      /* 大斧：宽半月刃 */
+      pole(hx + 6.5, hy - 32);
+      ctx.beginPath();
+      ctx.moveTo(hx + 6.5, hy - 32);
+      ctx.quadraticCurveTo(hx + 20, hy - 34, hx + 17, hy - 50);
+      ctx.quadraticCurveTo(hx + 10, hy - 42, hx + 6.5, hy - 44);
+      ctx.closePath();
+      steelFill();
+      if (rk >= 4) { ctx.strokeStyle = gold; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(hx + 17, hy - 50); ctx.quadraticCurveTo(hx + 19.5, hy - 42, hx + 17, hy - 36); ctx.stroke(); }
+    } else {
+      /* spear 枪（默认）：直锋 + 红缨 */
+      pole(hx + 7, hy - 38);
       ctx.beginPath();
       ctx.moveTo(hx + 7, hy - 50);
       ctx.lineTo(hx + 4.2, hy - 38);
       ctx.lineTo(hx + 9.6, hy - 38);
       ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = ink;
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-      if (rk >= 4) {
-        ctx.beginPath();
-        ctx.arc(hx + 2.2, hy - 36, 4.4, -0.42 * Math.PI, 0.34 * Math.PI);
-        ctx.stroke();
-      }
+      steelFill();
+      tuft(hx + 7, hy - 36);
     }
+  }
 
-    /* 手臂：前手随踢腿向后甩 */
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = 2.1;
+  /* ---------------------------------------------------------------------
+     毛笔笔触：一条二次曲线画成两头出锋、行笔饱满的墨线。
+     简笔小人靠的就是这几根线——圆头均匀线太"电脑"，换成笔锋才有水墨味。
+     --------------------------------------------------------------------- */
+  function inkCurve(x0, y0, cx, cy, x1, y1, w, col, seed) {
+    var N = 16, i, t, mt, px, py, dx, dy, ln, nx, ny, e, hw;
+    var sd = (seed || 1) * 1.73;
+    var A = [], B = [];
+    for (i = 0; i <= N; i++) {
+      t = i / N; mt = 1 - t;
+      px = mt * mt * x0 + 2 * mt * t * cx + t * t * x1;
+      py = mt * mt * y0 + 2 * mt * t * cy + t * t * y1;
+      dx = 2 * mt * (cx - x0) + 2 * t * (x1 - cx);
+      dy = 2 * mt * (cy - y0) + 2 * t * (y1 - cy);
+      ln = Math.sqrt(dx * dx + dy * dy) || 1;
+      nx = -dy / ln; ny = dx / ln;
+      /* 起笔略顿、行笔饱满、收笔出锋；再叠一点手腕抖动 */
+      e = 0.10 + 0.90 * Math.sin(Math.PI * (0.17 + 0.83 * t));
+      e *= 1 + 0.07 * Math.sin(t * 7.4 + sd);
+      hw = w * e * 0.5;
+      A.push(px + nx * hw, py + ny * hw);
+      B.push(px - nx * hw, py - ny * hw);
+    }
     ctx.beginPath();
-    ctx.moveTo(0, shoulderY);
-    ctx.quadraticCurveTo(7, shoulderY + 6, 13 - 6 * k, hipY - 2 - 10 * k);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, shoulderY);
-    ctx.quadraticCurveTo(-7, shoulderY + 7, -12 - 5 * k, hipY - 1 + 6 * k);
-    ctx.stroke();
+    ctx.moveTo(A[0], A[1]);
+    for (i = 1; i <= N; i++) ctx.lineTo(A[i * 2], A[i * 2 + 1]);
+    for (i = N; i >= 0; i--) ctx.lineTo(B[i * 2], B[i * 2 + 1]);
+    ctx.closePath();
+    ctx.fillStyle = col;
+    ctx.fill();
+  }
 
-    /* 头：一圈 */
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.arc(0, headY, 8.2, 0, TAU);
-    ctx.stroke();
+  /* 直笔：控制点取中点加一点法向偏移，让线别太呆 */
+  function inkSeg(x0, y0, x1, y1, w, col, seed) {
+    var mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    var dx = x1 - x0, dy = y1 - y0;
+    var ln = Math.sqrt(dx * dx + dy * dy) || 1;
+    var b = (((seed || 1) % 7) - 3) * 0.34;
+    inkCurve(x0, y0, mx - dy / ln * b, my + dx / ln * b, x1, y1, w, col, seed);
+  }
 
-    /* 眼睛一点 */
-    ctx.fillStyle = ink;
-    ctx.beginPath(); ctx.arc(3.4, headY - 1, 1.1, 0, TAU); ctx.fill();
+  /* ---------------------------------------------------------------------
+     简笔小人（毛笔版）
+     还是原来那几根线：躯干一笔、四肢四笔、头一圈。区别只在——
+     线换成浓黑笔锋（起笔顿、收笔出锋），整体放大 5%，站姿左右对称。
+     两人各站一边、互为镜像，画面上就是一对对称的剪影。
+     --------------------------------------------------------------------- */
+  /* ---------------------------------------------------------------------
+     简笔小人（按用户参考图定稿）
+     人形完全照参考图：空心大头、一笔躯干、对称八字腿、一手持兵器。
+     军阶不改变人形，只换装备器材——兵器、甲色、盔沿，越升越齐整。
+     --------------------------------------------------------------------- */
+  function drawWarrior(pal, kick, rank, wp) {
+    var ink = pal.deep || 'rgba(26,26,24,0.95)';
+    var rk = clamp(rank || 0, 0, RANKS.length - 1);
+    var plate = RANKS[rk].armor;
+    var cloth = RANKS[rk].cloth;
+    var k = clamp(kick || 0, 0, 1);
+    var sway = Math.sin(st.t * 2.1) * 1.1;
+    /* 把颜色压淡，装备只做一层"罩色"，不抢简笔线条 */
+    function faint(c, a) { return String(c).replace(/[\d.]+\)$/, a + ')'); }
 
-    /* 头巾 / 铁盔 */
-    if (rk === 1) {
-      ctx.strokeStyle = 'rgba(138,101,56,0.95)';
-      ctx.lineWidth = 2.6;
+    /* 脚下淡影 */
+    ctx.fillStyle = 'rgba(96,106,108,0.10)';
+    ctx.beginPath(); ctx.ellipse(0, 1, 17, 3.5, 0, 0, TAU); ctx.fill();
+
+    ctx.save();
+    ctx.scale(1.05, 1.05);          /* 比原图放大 5% */
+    ctx.rotate(-0.10 * k);          /* 踢腿时身子略后仰 */
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    var hipY = -31;
+    var neckY = -51 + sway * 0.3;
+    var headY = -61 + sway * 0.5;
+    var headR = 8.8;
+    var shoulderY = neckY + 3;
+
+    /* 双腿：两条对称的八字，一脚踏地、一脚踢出 */
+    var fx = 8.8 + 18 * k, fy = -1.2 - 27 * k;
+    inkCurve(0, hipY, -4.2, hipY + 16, -8.8, -1.2, 4.6, ink, 1);
+    inkCurve(0, hipY, 4.2 + 7 * k, hipY + 15 - 4 * k, fx, fy, 4.6, ink, 2);
+    inkSeg(-11.0, -1.0, -6.2, -1.5, 3.4, ink, 4);              /* 踏地的脚 */
+    inkSeg(fx - 1.2, fy, fx + 4.4, fy - 1.6, 3.4, ink, 6);     /* 踢出的脚 */
+
+    /* 躯干：一笔竖线 */
+    inkSeg(0, hipY + 1, 0, neckY, 5.2, ink, 8);
+
+    /* 装备一：衣甲。伍长起罩一层布色，百户起换甲色，只罩色不描边 */
+    if (rk >= 1) {
+      var tw = 6.6, bw2 = rk >= 2 ? 7.8 : 7.0, botY = rk >= 2 ? hipY + 0.5 : hipY + 3;
       ctx.beginPath();
-      ctx.moveTo(-7.6, headY - 3.4);
-      ctx.quadraticCurveTo(0, headY - 6.6, 7.4, headY - 4);
-      ctx.stroke();
-      /* 两条飘带 */
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-7.4, headY - 4);
-      ctx.quadraticCurveTo(-13, headY - 4 + sway, -17, headY + 1 + sway * 1.6);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(-7.4, headY - 2.2);
-      ctx.quadraticCurveTo(-12.4, headY + 2 + sway, -15.4, headY + 6 + sway);
-      ctx.stroke();
-    } else if (rk >= 2) {
-      ctx.strokeStyle = ink;
-      /* 铁盔：半个圆扣在头顶 */
-      ctx.beginPath();
-      ctx.arc(0, headY - 0.8, 8.9, Math.PI * 1.02, Math.PI * 1.98);
+      ctx.moveTo(-tw, neckY + 1.5);
+      ctx.lineTo(tw, neckY + 1.5);
+      ctx.lineTo(bw2, botY);
+      ctx.lineTo(-bw2, botY);
       ctx.closePath();
-      ctx.fillStyle = plate;
+      ctx.fillStyle = rk >= 2 ? faint(plate, 0.42) : faint(cloth, 0.5);
       ctx.fill();
-      ctx.lineWidth = 1.8;
-      ctx.stroke();
-      /* 盔沿一道 */
-      ctx.beginPath();
-      ctx.moveTo(-8.7, headY - 1.2);
-      ctx.lineTo(8.7, headY - 1.2);
-      ctx.stroke();
-      /* 护颈：后脑两撇 */
-      ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.moveTo(-8, headY + 2); ctx.lineTo(-10.6, headY + 8); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-5.2, headY + 6); ctx.lineTo(-6.8, headY + 10); ctx.stroke();
-      /* 盔顶尖：千户起 */
-      if (rk >= 3) {
-        ctx.beginPath(); ctx.moveTo(0, headY - 8.8); ctx.lineTo(0, headY - 12.6); ctx.stroke();
-      }
+    }
+    /* 装备二：护心镜，将军才有，一小点金 */
+    if (rk >= 4) {
+      ctx.beginPath(); ctx.arc(0, neckY + 9.5, 2.6, 0, TAU);
+      ctx.fillStyle = faint('rgba(217,178,63,0.98)', 0.75);
+      ctx.fill();
     }
 
-    /* 红缨：小兵没有，伍长起越长越显职级；将军换双雉翎 */
+    /* 装备三：腰带 */
+    inkSeg(-6.0, hipY + 1.6, 6.0, hipY + 1.6, 3.6, ink, 9);
+
+    /* 兵器：握在前手，随踢腿一起甩 */
+    var hx = 13.0 - 6 * k, hy = hipY - 1 - 10 * k;
+    if (rk === 0) {
+      inkSeg(hx - 1, hy + 7, hx + 6, hy - 25, 3.6, 'rgba(126,92,54,0.92)', 14);      /* 木棍 */
+    } else if (rk === 1) {
+      inkSeg(hx - 1.5, hy + 3.5, hx + 3, hy - 6, 3.4, ink, 15);                      /* 短刀 */
+      inkSeg(hx + 3, hy - 6, hx + 5, hy - 17, 3.0, 'rgba(196,200,204,0.95)', 16);
+    } else {
+      drawWeapon(hx, hy, wp || 'spear', rk, ink, sway);
+    }
+
+    /* 双臂：左右对称撑开，前手握兵器 */
+    inkCurve(1, shoulderY, 7.2, shoulderY + 6, hx, hy, 4.2, ink, 11);
+    inkCurve(-1, shoulderY, -7.2, shoulderY + 7, -11.8 - 4 * k, hipY - 1 + 5 * k, 4.0, ink, 12);
+
+    /* 头：空心大圆，一笔勾成 */
+    ctx.beginPath(); ctx.arc(0, headY, headR, 0, TAU);
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 3.4;
+    ctx.stroke();
+
+    /* 装备四：盔。百户起一道盔沿（只描线不填色），将军加盔尖 */
     if (rk >= 2) {
-      ctx.strokeStyle = acc;
-      ctx.lineWidth = 2.4;
       ctx.beginPath();
-      if (rk >= 4) {
-        ctx.moveTo(-1, headY - 10);
-        ctx.quadraticCurveTo(-11, headY - 20 + sway, -24, headY - 13 + sway * 1.6);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(-1, headY - 10);
-        ctx.quadraticCurveTo(-8, headY - 24 + sway, -19, headY - 25 + sway * 1.4);
-      } else {
-        var pl = rk === 2 ? 1 : 1.5;
-        ctx.moveTo(-5.5, headY - 6);
-        ctx.quadraticCurveTo(-11 * pl, headY - 10 * pl + sway, -16 * pl, headY - 4 * pl + sway * 1.6);
-      }
+      ctx.arc(0, headY - 0.6, headR + 0.9, Math.PI * 1.06, Math.PI * 1.94);
+      ctx.strokeStyle = faint(plate, 0.9);
+      ctx.lineWidth = 2.8;
       ctx.stroke();
+      if (rk >= 4) {
+        ctx.beginPath();
+        ctx.moveTo(0, headY - headR - 1.4);
+        ctx.lineTo(0, headY - headR - 4.4);
+        ctx.strokeStyle = ink;
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+      }
     }
 
     ctx.restore();
@@ -4122,8 +4335,9 @@
     ctx.scale(sc, sc);
     drawWarrior({
       ink: 'rgba(52,58,62,0.86)',
+      deep: 'rgba(26,25,22,0.95)',        /* 浓墨：毛笔笔锋用这支 */
       accent: 'rgba(184,69,58,0.92)'
-    }, kickAmp(st.kickT), myRank);
+    }, kickAmp(st.kickT), myRank, hero.w);
     ctx.restore();
 
     /* 脚下名字：自己选的那员将 + 阵营色 */
@@ -4151,8 +4365,9 @@
     ctx.scale(-fsc, fsc);   /* 镜像：面朝左；比例与赵云一致 */
     drawWarrior({
       ink: 'rgba(58,62,66,0.9)',
+      deep: 'rgba(22,24,27,0.96)',
       accent: 'rgba(110,114,120,0.9)'
-    }, kickAmp(foe.kickT), foeRank);
+    }, kickAmp(foe.kickT), foeRank, foe.hero ? foe.hero.w : 'spear');
     ctx.restore();
 
     /* 敌将血条：3 大格分三段画，段内填充 —— 5 个小兵打满一格的进度看得见 */
@@ -4613,6 +4828,11 @@
     var reached = st.level;
     recordBestLv(reached);
     recordFaction(reached);
+    /* 会试连败保护：败一局计一笔，连输 3 局起下一局对手放慢 */
+    if (GAME_MODE === 'pro') {
+      loseStreak++;
+      try { localStorage.setItem(saveKey('pzqb_lose'), String(loseStreak)); } catch (e) {}
+    }
     document.getElementById('finalScore').textContent = st.score;
     document.getElementById('bestOver').textContent = best;
     document.getElementById('bestStart').textContent = best;
@@ -4635,7 +4855,10 @@
       '累计已学 <span>' + learnedCount() + '</span> 字' +
       (GAME_MODE === 'dian'
         ? '<br>殿试每局从第 1 关重来 · 你已打到过第 <span>' + bestLv + '</span> 关'
-        : '<br>进度已保存 · 下一局从第 <span>' + progLv + '</span> 关接着打');
+        : '<br>进度已保存 · 下一局从第 <span>' + progLv + '</span> 关接着打') +
+      (loseMercy() < 1
+        ? '<br><b style="color:#4E7A5A">连败保护已生效 · 下一局对手放慢 ' + Math.round((1 - loseMercy()) * 100) + '%</b>'
+        : '');
 
     var v = verdictOf(reached);
     document.getElementById('overVerdict').textContent = v.t;
@@ -4807,9 +5030,9 @@
     var rl = document.querySelector('.ruleLine');
     if (rl) {
       rl.innerHTML = isKids()
-        ? '3 条命 · 打空敌将就破一关 · <b style="color:#b8453a">每破一关补 1 条命</b> · 进度自动保存'
+        ? '不计时 · 不比速度 · <b style="color:#b8453a">安心认字</b> · 每破一关补 1 条命 · 进度自动保存'
         : (GAME_MODE === 'pro'
-          ? '3 条命 · 破关回一格 · <b style="color:#b8453a">节奏跟着你的手速走</b> · 进度自动保存'
+          ? '3 条命 · 破关回一格 · 节奏跟手速 · <b style="color:#b8453a">连输三局对手自动放慢</b> · 进度自动保存'
           : '3 条命 · 不补血 · <b style="color:#b8453a">殿试原味，漏完即止</b> · 每局从第 1 关');
     }
   }
@@ -4959,6 +5182,8 @@
       factionStats: function () { try { return localStorage.getItem('pzqb_faction'); } catch (e) { return null; } },
       bestLv: function () { return bestLv; },
       progLv: function () { return progLv; },
+      loseStreak: function () { return loseStreak; },
+      loseMercy: function () { return loseMercy(); },
       troopRank: troopRank,
       troopName: troopName,
       ranks: function () { return RANKS.map(function (r) { return r.name + '@' + r.min; }); },
@@ -4967,6 +5192,7 @@
         return n;
       },
       plaques: function () { return plaques.map(function (q) { return q.target.c + q.target.p + '@' + Math.round(q.x); }); },
+      plaqueSpd: function () { return Math.max.apply(null, plaques.map(function (q) { return q.sp; }).concat([0])); },
       pushPlaque: function (w) { if (foe) spawnPlaque(w); },
       foeObj: function () { return foe; },
       simHit: function () {
