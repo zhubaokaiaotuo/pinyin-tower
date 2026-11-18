@@ -1,5 +1,9 @@
 # 拼好兵
 
+**三国 汉字大战**
+
+[简体中文](README.md) | [English](README.en.md)
+
 一个用拼音拼字打敌将的小游戏。给一二年级正在学拼音、学识字的孩子用：把字母拼成音节，选对声调，字才会出现；拼出的字变成火苗打向敌将，三个字打倒一个对手。
 
 单文件网页游戏，**双击 index.html 就能玩**，不联网、不安装、不上传任何数据，手机和电脑都能打开。
@@ -14,7 +18,7 @@
    - 蒙学：小兵打 1 格、营长打 2 格、大将军一次打 3 格（敌将共 3 格，老手感）
    - 会试 / 殿试：敌将共 3 大格——**5 个小兵打掉一格、3 个营长打掉一格、1 个大将军一次打掉一格**，一关要真刀真枪打个十几回合
 6. 敌将和我方各 3 大格血，谁先掉光谁输；连胜 5 场封「常胜将军」
-7. **每 20 关升一级军阶**，小人会真的换装：小兵（1–19 关，光头木棍）→ 伍长（20 关，头巾短甲短刀）→ 百户（40 关，铁盔披风长矛）→ 千户（60 关，金盔长缨鳞甲）→ 将军（80 关，双翎护心镜大氅）。升职当关全场报喜，敌将也同步升档
+7. **每 20 关升一级军阶**，小人会真的换装：小兵（1–19 关，光头木棍）→ 伍长（20 关，布衣头巾飘带＋弯刀）→ 百户（40 关，铁盔甲片＋本将兵器）→ 千户（60 关，金甲两排甲片＋盔尖）→ 将军（80 关，金甲护心镜＋双雉翎）。升职当关全场报喜，敌将也同步升档
 8. **开局选一员三国名将代表自己**：蜀魏吴董四个阵营 20 员将（赵云、张辽、周瑜、吕布……），脚下写名字、阵营带颜色；敌将每关从别家阵营里换人出战。破关、败北的结算页都能**返回首页**，局内右上角「回营」按两下也能回
 9. **关卡进度永久保留，退出不白打**：蒙学／会试打通的关卡会记在本机，首页「开战」按钮直接写着「开战 · 第 X 关」，退出、输一局、点再战都从这一关接着打，绝不回到第 1 关（殿试保持原味，每局都从第 1 关起）。同一局没打完就退出，首页还会亮出「续战 · 第 X 关」，连剩余血量和连胜一起接上；败北后该局存档清掉，成绩（最高分/称号/已学字）始终保留。**历史最远关卡单独记档**（按版本分开、败北不清），首页统计行显示「最远第 X 关」，并按阵营记下「谁打出来的」，给以后阵营选代表当参考
 
@@ -41,3 +45,17 @@
 ## 说明
 
 家庭自用的练习小游戏，供学习和交流使用。字库以统编版小学语文教材写字表为基础整理，如有字音错漏欢迎指出。
+
+## English
+
+**Pin Hao Bing · Three Kingdoms: Battle of Chinese Characters**
+
+A water-ink spelling duel. You stand at a gate; the enemy sends Chinese characters at you; the only way to hold the line is to read them. Build the syllable from letter tiles, choose the tone, pick the right character among its tone-mates. Get it right and a flame flies at the enemy general.
+
+Start in **First Lessons**: no clock, no penalty for thinking, nothing but characters to meet. Move up to the **Provincial Exam** and the **Palace Exam** once speed stops frightening you. Two characters make a battalion commander, four make a Great General, and every twenty levels you rise from private to general with the armor to show it.
+
+161 everyday characters, 187 two-character words, 60 four-character idioms, 20 Three Kingdoms generals.
+
+Full English introduction: [README.en.md](README.en.md)
+
+> The interface is in Chinese for now; the game was first built for Chinese six- and seven-year-olds learning pinyin. An English interface is on the roadmap.
