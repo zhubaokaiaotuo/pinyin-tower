@@ -44,11 +44,11 @@ Promotion every twenty levels, and the drawing actually changes: headband, armor
 
 ## Two characters make a commander, four make a Great General
 
-| You spell | Unit | Damage (First Lessons / Exam modes) |
+| You spell | Unit | Damage: First Lessons / Exam modes |
 |---|---|---|
-| one character | soldier | 1 grid / 3 points |
+| one character | soldier | 1 grid / 3 points (a grid holds 15) |
 | a two-character word (白云 white cloud) | battalion commander | 2 grids / 5 points |
-| a four-character idiom (一心一意 wholehearted) | Great General | 3 grids, one hit / 15 points, one grid |
+| a four-character idiom (一心一意 wholehearted) | Great General | 3 grids, the whole enemy / 15 points, a full grid in one hit |
 
 The idioms are not filler. They are the ones Chinese children grow up hearing: waiting by a stump for a hare to run into it, drawing legs on a snake you already finished, mending the fold after the sheep is lost.
 
